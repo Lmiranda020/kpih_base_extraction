@@ -4,6 +4,7 @@ from modules.conectar_vpn import conectar_vpn
 from modules.api_consumo import api_consumo
 from modules.api_quantidadeLeito import api_quantidadeLeito
 from modules.api_quantidadeCirurgia import api_quantidadeCirurgia
+from modules.api_notasFiscais import api_notasFiscais
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -50,16 +51,32 @@ def main():
     # Executar todas as APIs
     apis_para_executar = [
         # ("Consumo", api_consumo),
-        # ("QuantidadeLeito", api_quantidadeLeito),
-        ("QuantidadeCirurgia", api_quantidadeCirurgia)
+        ("QuantidadeLeito", api_quantidadeLeito),
+        # ("QuantidadeCirurgia", api_quantidadeCirurgia),
+        # ("NotasFiscais", api_notasFiscais),
+
     ]
     
     resultados = {}
     
     for nome_api, funcao_api in apis_para_executar:
         try:
-            # ← MODIFICADO: Passa o tracker para a função
-            arquivo = funcao_api(diretorio_arquivo_competencia, caminho, tracker)
+            # Configuração específica para QuantidadeLeito
+            if nome_api in ["QuantidadeLeito", "QuantidadeCirurgia"]:
+                arquivo = funcao_api(
+                    diretorio_arquivo_competencia, 
+                    caminho, 
+                    tracker,
+                    delay_entre_chamadas=2.0,      # 2s entre requisições
+                    max_tentativas_403=4,          # 3 tentativas em caso de 403
+                    backoff_inicial=3.0,           # Espera inicial de 3s no retry
+                    agrupar_por_unidade=True,      # Processa todas competências de uma unidade antes de passar para próxima
+                    delay_entre_unidades=5.0       # 5s ao mudar de unidade
+                )
+            else:
+                # Outras APIs usam configuração padrão
+                arquivo = funcao_api(diretorio_arquivo_competencia, caminho, tracker)
+            
             resultados[nome_api] = {
                 "sucesso": arquivo is not None,
                 "arquivo": arquivo

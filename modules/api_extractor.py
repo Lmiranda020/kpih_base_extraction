@@ -3,6 +3,93 @@ import pandas as pd
 from datetime import datetime
 import os
 import time
+import json
+import random
+
+# def gerar_curl(url, headers, payload):
+#     """Gera comando cURL para debug"""
+#     curl = f"curl -X POST '{url}' \\\n"
+    
+#     for key, value in headers.items():
+#         curl += f"  -H '{key}: {value}' \\\n"
+    
+#     curl += f"  -H 'Content-Type: application/json' \\\n"
+#     curl += f"  -d '{json.dumps(payload)}'"
+    
+#     return curl
+
+
+def fazer_requisicao_com_retry(
+    url, 
+    headers, 
+    payload, 
+    timeout, 
+    max_tentativas=4,
+    backoff_inicial=2.0,
+    nome_unidade="",
+    competencia=""
+):
+    """
+    Faz requisição com retry automático em caso de erro 403
+    
+    Args:
+        url: URL da requisição
+        headers: Headers da requisição
+        payload: Payload JSON
+        timeout: Timeout da requisição
+        max_tentativas: Número máximo de tentativas
+        backoff_inicial: Tempo inicial de espera (será multiplicado a cada tentativa)
+        nome_unidade: Nome da unidade (para logs)
+        competencia: Competência (para logs)
+    
+    Returns:
+        tuple: (response, tempo_execucao, tentativa_sucesso)
+    """
+    
+    for tentativa in range(1, max_tentativas + 1):
+        inicio = time.time()
+        
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            tempo_execucao = time.time() - inicio
+            
+            # Se não for 403, retorna imediatamente (sucesso ou outro erro)
+            if response.status_code != 403:
+                if tentativa > 1:
+                    print(f"   ✅ Sucesso na tentativa {tentativa}")
+                return response, tempo_execucao, tentativa
+            
+            # Se for 403 e não for a última tentativa, faz retry
+            if tentativa < max_tentativas:
+                # Backoff exponencial com jitter
+                tempo_espera = backoff_inicial * (2 ** (tentativa - 1))
+                jitter = random.uniform(0, 0.5)
+                tempo_total = tempo_espera + jitter
+                
+                print(f"   ⚠️ HTTP 403 (tentativa {tentativa}/{max_tentativas})")
+                print(f"   ⏳ Aguardando {tempo_total:.1f}s antes de tentar novamente...")
+                time.sleep(tempo_total)
+            else:
+                # Última tentativa falhou
+                print(f"   ❌ HTTP 403 após {max_tentativas} tentativas")
+                return response, tempo_execucao, tentativa
+                
+        except requests.exceptions.Timeout:
+            tempo_execucao = time.time() - inicio
+            if tentativa < max_tentativas:
+                print(f"   ⏱️ Timeout (tentativa {tentativa}/{max_tentativas})")
+                print(f"   ⏳ Aguardando 3s antes de tentar novamente...")
+                time.sleep(3)
+            else:
+                raise
+        
+        except requests.exceptions.RequestException:
+            # Erros de conexão não devem fazer retry
+            raise
+    
+    # Não deveria chegar aqui, mas por segurança
+    return response, tempo_execucao, max_tentativas
+
 
 def extrair_dados_api(
     diretorio_arquivo_competencia,
@@ -12,10 +99,15 @@ def extrair_dados_api(
     payload_func,
     processar_func=None,
     timeout=60,
-    tracker=None
+    tracker=None,
+    delay_entre_chamadas=0.5,
+    max_tentativas_403=4,
+    backoff_inicial=2.0,
+    agrupar_por_unidade=True,
+    delay_entre_unidades=2.0
 ):
     """
-    Função genérica para extrair dados de qualquer API
+    Função genérica para extrair dados de qualquer API com retry automático
     
     Args:
         diretorio_arquivo_competencia: Caminho do Excel com competências
@@ -26,6 +118,11 @@ def extrair_dados_api(
         processar_func: Função que recebe (dados_json, unidade) e retorna DataFrame
         timeout: Timeout da requisição em segundos
         tracker: Instância de ExecutionTracker para registrar execuções
+        delay_entre_chamadas: Delay entre cada requisição (em segundos)
+        max_tentativas_403: Número máximo de tentativas quando receber 403
+        backoff_inicial: Tempo inicial de espera entre tentativas (dobra a cada retry)
+        agrupar_por_unidade: Se True, processa todas competências de uma unidade antes de passar para próxima
+        delay_entre_unidades: Delay maior ao mudar de unidade (em segundos)
     """
     
     print(f"\n{'='*60}")
@@ -67,11 +164,26 @@ def extrair_dados_api(
         print("⚠️ Nenhuma competência fechada encontrada")
         return None
     
+    # Reordena para agrupar por unidade se solicitado
+    if agrupar_por_unidade:
+        df_consolidado = df_consolidado.sort_values(['unidade_id', 'competencia']).reset_index(drop=True)
+        print(f"📋 Processamento agrupado por unidade")
+    
     print(f"📊 Total de competências a processar: {len(df_consolidado)}")
+    print(f"🔄 Retry automático: {max_tentativas_403} tentativas para erros 403")
+    print(f"⏱️ Delay entre requisições: {delay_entre_chamadas}s")
+    if agrupar_por_unidade:
+        print(f"⏱️ Delay entre unidades: {delay_entre_unidades}s")
+    print()
 
     dados_extraidos = []
     total = len(df_consolidado)
     erros = []
+    erros_403_persistentes = []
+    
+    # arquivo_curl = os.path.join(caminho_to_save, f"curls_erro_403_{nome_api}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+    
+    unidade_anterior = None
 
     # Loop pelas unidades
     for idx, unidade in df_consolidado.iterrows():
@@ -80,9 +192,14 @@ def extrair_dados_api(
         nome_unidade = unidade['nome']
         competencia = unidade['competencia']
         
-        print(f"🔄 [{idx + 1}/{total}] {nome_unidade} - {competencia}")
+        # Detecta mudança de unidade e adiciona delay maior
+        if agrupar_por_unidade and unidade_anterior is not None and unidade_anterior != id_unidade:
+            print(f"\n🔄 Mudando de unidade (delay de {delay_entre_unidades}s)...\n")
+            time.sleep(delay_entre_unidades)
         
-        inicio_requisicao = time.time()
+        unidade_anterior = id_unidade
+        
+        print(f"🔄 [{idx + 1}/{total}] {nome_unidade} - {competencia}")
         
         # Monta payload específico da API
         try:
@@ -106,8 +223,17 @@ def extrair_dados_api(
         headers = {"Authorization": f"Bearer {token}"}
 
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=timeout)
-            tempo_execucao = time.time() - inicio_requisicao
+            # Usa função com retry
+            response, tempo_execucao, tentativa = fazer_requisicao_com_retry(
+                url=url,
+                headers=headers,
+                payload=payload,
+                timeout=timeout,
+                max_tentativas=max_tentativas_403,
+                backoff_inicial=backoff_inicial,
+                nome_unidade=nome_unidade,
+                competencia=competencia
+            )
             
             if response.status_code == 200:
                 try:
@@ -190,6 +316,36 @@ def extrair_dados_api(
                         erro=f"HTTP 401 - {erro_msg}",
                         tempo_execucao=tempo_execucao
                     )
+            
+            elif response.status_code == 403:
+                # Salva cURL apenas para 403 que persistiram após todas as tentativas
+                erro_msg = f"Erro HTTP 403 (após {tentativa} tentativas)"
+                erros.append(f"{nome_unidade}: {erro_msg}")
+                erros_403_persistentes.append(f"{nome_unidade} - {competencia}")
+                
+                # curl_command = gerar_curl(url, headers, payload)
+                
+                # with open(arquivo_curl, 'a', encoding='utf-8') as f:
+                #     f.write(f"\n{'='*80}\n")
+                #     f.write(f"API: {nome_api}\n")
+                #     f.write(f"Unidade: {nome_unidade}\n")
+                #     f.write(f"Competência: {competencia}\n")
+                #     f.write(f"Data/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                #     f.write(f"Status: 403 Forbidden (após {tentativa} tentativas)\n")
+                #     # f.write(f"\ncURL:\n{curl_command}\n")
+                #     f.write(f"{'='*80}\n")
+                
+                # print(f"   💾 cURL salvo em: {arquivo_curl}")
+                
+                if tracker:
+                    tracker.registrar_execucao(
+                        endpoint=nome_api,
+                        unidade=nome_unidade,
+                        competencia=competencia,
+                        status='erro',
+                        erro=erro_msg,
+                        tempo_execucao=tempo_execucao
+                    )
                     
             elif response.status_code == 404:
                 erro_msg = "Endpoint não encontrado"
@@ -221,8 +377,8 @@ def extrair_dados_api(
                     )
 
         except requests.exceptions.Timeout:
-            tempo_execucao = time.time() - inicio_requisicao
-            erro_msg = f"Timeout (>{timeout}s)"
+            tempo_execucao = timeout
+            erro_msg = f"Timeout (>{timeout}s) após {max_tentativas_403} tentativas"
             erros.append(f"{nome_unidade}: {erro_msg}")
             print(f"   ⏱️ {erro_msg}")
 
@@ -237,7 +393,6 @@ def extrair_dados_api(
                 )
                 
         except requests.exceptions.RequestException as e:
-            tempo_execucao = time.time() - inicio_requisicao
             erro_msg = f"Erro na requisição - {str(e)[:100]}"
             erros.append(f"{nome_unidade}: {erro_msg}")
             print(f"   ❌ {erro_msg}")
@@ -249,11 +404,10 @@ def extrair_dados_api(
                     competencia=competencia,
                     status='erro',
                     erro=erro_msg,
-                    tempo_execucao=tempo_execucao
+                    tempo_execucao=0
                 )
                 
         except Exception as e:
-            tempo_execucao = time.time() - inicio_requisicao
             erro_msg = f"Erro inesperado - {str(e)[:100]}"
             erros.append(f"{nome_unidade}: {erro_msg}")
             print(f"   ⚠️ {erro_msg}")
@@ -265,8 +419,13 @@ def extrair_dados_api(
                     competencia=competencia,
                     status='erro',
                     erro=erro_msg,
-                    tempo_execucao=tempo_execucao
+                    tempo_execucao=0
                 )
+        
+        # Delay entre requisições (exceto na última)
+        if idx < total - 1:
+            print(f"   ⏳ Aguardando {delay_entre_chamadas}s antes da próxima requisição...")
+            time.sleep(delay_entre_chamadas)
 
     # Consolidação e salvamento
     if not dados_extraidos:
@@ -275,6 +434,16 @@ def extrair_dados_api(
             print(f"\n⚠️ Erros encontrados ({len(erros)}):")
             for erro in erros[:5]:
                 print(f"   - {erro}")
+        
+        if erros_403_persistentes:
+            print(f"\n🚨 Erros 403 persistentes ({len(erros_403_persistentes)}):")
+            for erro_403 in erros_403_persistentes[:10]:
+                print(f"   - {erro_403}")
+        
+        # if os.path.exists(arquivo_curl):
+        #     print(f"\n📋 Arquivo com cURLs de erros 403 gerado:")
+        #     print(f"   {arquivo_curl}")
+        
         return None
     
     try:
@@ -307,6 +476,14 @@ def extrair_dados_api(
         print(f"📍 Arquivo: {caminho_arquivo}")
         if erros:
             print(f"⚠️ Houve {len(erros)} erro(s) durante a extração")
+        
+        if erros_403_persistentes:
+            print(f"🚨 {len(erros_403_persistentes)} erro(s) 403 persistentes (após retries)")
+        
+        # if os.path.exists(arquivo_curl):
+        #     print(f"📋 Arquivo com cURLs de erros 403:")
+        #     print(f"   {arquivo_curl}")
+        
         print(f"{'='*60}\n")
         
         return caminho_arquivo

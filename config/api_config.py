@@ -72,7 +72,7 @@ APIS_CONFIG = {
         "timeout": 90
     },
     "NotasFiscais": {
-        "env_var": "url_NotasFiscais",
+        "env_var": "url_notasFiscais",
         "payload_func": payload_notasFiscais,
         "processar_func": None,
         "timeout": 60
