@@ -32,16 +32,15 @@ def payload_notasFiscais(unidade):
         "competenciaFinal": unidade['competencia'],
     }
 
-def payload_benchmarker(unidade):
+def payload_folhaPagamento(unidade):
     """Payload específico para API de Benchmarker"""
     return {
-        "periodo": unidade['competencia'],
-        "indicadores": ["PRODUTIVIDADE", "QUALIDADE", "FINANCEIRO"],
-        "compararCom": "MERCADO",
-        "nivelDetalhe": "ALTO"
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "tipoAgrupamento": "CENTRO"
     }
 
-def payload_custos_fixos(unidade):
+def payload_custosIndividualizadoPorCentro(unidade):
     """Payload específico para API de Custos Fixos"""
     return {
         "mesReferencia": unidade['mes'],
@@ -74,6 +73,18 @@ APIS_CONFIG = {
     "NotasFiscais": {
         "env_var": "url_notasFiscais",
         "payload_func": payload_notasFiscais,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "FolhadePagamento": {
+        "env_var": "url_folhaPagamento",
+        "payload_func": payload_folhaPagamento,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "payload_custosIndividualizadoPorCentro": { 
+        "env_var": "url_custosIndividualizadoPorCentro",
+        "payload_func": payload_custosIndividualizadoPorCentro,
         "processar_func": None,
         "timeout": 60
     }

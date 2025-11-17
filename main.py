@@ -5,6 +5,7 @@ from modules.api_consumo import api_consumo
 from modules.api_quantidadeLeito import api_quantidadeLeito
 from modules.api_quantidadeCirurgia import api_quantidadeCirurgia
 from modules.api_notasFiscais import api_notasFiscais
+from modules.api_folhadepagamento import api_folhadepagamento
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -51,9 +52,12 @@ def main():
     # Executar todas as APIs
     apis_para_executar = [
         # ("Consumo", api_consumo),
-        ("QuantidadeLeito", api_quantidadeLeito),
+        # ("QuantidadeLeito", api_quantidadeLeito),
         # ("QuantidadeCirurgia", api_quantidadeCirurgia),
         # ("NotasFiscais", api_notasFiscais),
+        ("FolhadePagamento", api_folhadepagamento),
+        
+
 
     ]
     

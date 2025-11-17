@@ -1,15 +1,15 @@
 from modules.api_extractor import extrair_dados_api
 from config.api_config import APIS_CONFIG
 
-def api_notasFiscais(
+def api_folhadepagamento(
     diretorio_arquivo_competencia, 
     caminho_to_save, 
     tracker=None, 
-    delay_entre_chamadas=2.0,           
-    max_tentativas_403=3,               
-    backoff_inicial=3.0,                
-    agrupar_por_unidade=True,           
-    delay_entre_unidades=5.0            
+    delay_entre_chamadas=2.0,           # ← AUMENTADO de 0.5 para 2.0
+    max_tentativas_403=3,               # ← NOVO
+    backoff_inicial=3.0,                # ← NOVO
+    agrupar_por_unidade=True,           # ← NOVO
+    delay_entre_unidades=5.0            # ← NOVO
 ):
     """
     Extrai dados de Quantidade de Leito com retry automático
@@ -24,12 +24,12 @@ def api_notasFiscais(
         agrupar_por_unidade: Agrupa processamento por unidade (padrão: True)
         delay_entre_unidades: Delay ao mudar de unidade (padrão: 5.0s)
     """
-    config = APIS_CONFIG["NotasFiscais"]
+    config = APIS_CONFIG["FolhadePagamento"]
     
     return extrair_dados_api(
         diretorio_arquivo_competencia=diretorio_arquivo_competencia,
         caminho_to_save=caminho_to_save,
-        nome_api="NotasFiscais",
+        nome_api="FolhadePagamento",
         env_var_url=config["env_var"],
         payload_func=config["payload_func"],
         processar_func=config["processar_func"],
