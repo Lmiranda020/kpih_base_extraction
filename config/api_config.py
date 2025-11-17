@@ -1,0 +1,80 @@
+"""
+Configurações de todas as APIs
+Cada API define seu próprio payload e processamento
+"""
+
+def payload_consumo(unidade):
+    """Payload específico para API de Consumo"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "tipoAgrupamento": "CENTRO",
+    }
+
+def payload_quantidadeLeito(unidade):
+    """Payload específico para API de QuantidadeLeito"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+    }
+
+def payload_quantidadeCirurgia(unidade):
+    """Payload específico para API de QuantidadeCirurgia"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+    }
+
+def payload_notasFiscais(unidade):
+    """Payload específico para API de QuantidadeCirurgia"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+    }
+
+def payload_benchmarker(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "periodo": unidade['competencia'],
+        "indicadores": ["PRODUTIVIDADE", "QUALIDADE", "FINANCEIRO"],
+        "compararCom": "MERCADO",
+        "nivelDetalhe": "ALTO"
+    }
+
+def payload_custos_fixos(unidade):
+    """Payload específico para API de Custos Fixos"""
+    return {
+        "mesReferencia": unidade['mes'],
+        "anoReferencia": unidade['ano'],
+        "categoriaCusto": "FIXO",
+        "incluirDepreciacao": True
+    }
+
+
+# Dicionário de configuração de todas as APIs
+APIS_CONFIG = {
+    "Consumo": {
+        "env_var": "url_consumo",
+        "payload_func": payload_consumo,
+        "processar_func": None, 
+        "timeout": 60
+    },
+    "QuantidadeLeito": {
+        "env_var": "url_quantidadeLeito",
+        "payload_func": payload_quantidadeLeito,
+        "processar_func": None, 
+        "timeout": 60
+    },
+    "QuantidadeCirurgia": {
+        "env_var": "url_quantidadeCirurgia",
+        "payload_func": payload_quantidadeCirurgia,
+        "processar_func": None,
+        "timeout": 90
+    },
+    "NotasFiscais": {
+        "env_var": "url_NotasFiscais",
+        "payload_func": payload_notasFiscais,
+        "processar_func": None,
+        "timeout": 60
+    }
+}
