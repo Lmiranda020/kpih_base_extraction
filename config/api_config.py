@@ -43,10 +43,20 @@ def payload_folhaPagamento(unidade):
 def payload_custosIndividualizadoPorCentro(unidade):
     """Payload específico para API de Custos Fixos"""
     return {
-        "mesReferencia": unidade['mes'],
-        "anoReferencia": unidade['ano'],
-        "categoriaCusto": "FIXO",
-        "incluirDepreciacao": True
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "quantificacaoUnidadeProducao": "ABSOLUTO",
+        "considerarRecursosExternos": True,
+        "considerarMatMed": True,
+        "considerarHonorarios": True
+    }
+
+def payload_producoes(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "quantificacaoUnidadeProducao": "ABSOLUTO"
     }
 
 
@@ -82,9 +92,15 @@ APIS_CONFIG = {
         "processar_func": None,
         "timeout": 60
     },
-    "payload_custosIndividualizadoPorCentro": { 
+    "custosIndividualizadoPorCentro": { 
         "env_var": "url_custosIndividualizadoPorCentro",
         "payload_func": payload_custosIndividualizadoPorCentro,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "producoes": { 
+        "env_var": "url_producoes",
+        "payload_func": payload_producoes,
         "processar_func": None,
         "timeout": 60
     }
