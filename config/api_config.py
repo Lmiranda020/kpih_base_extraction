@@ -67,6 +67,13 @@ def payload_estatistica(unidade):
         "quantificacaoUnidadeProducao": "ABSOLUTO"
     }
 
+def payload_rankingDeCusto(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia']
+    }
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -114,6 +121,12 @@ APIS_CONFIG = {
      "estatistica": { 
         "env_var": "url_estatistica",
         "payload_func": payload_estatistica,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "rankingDeCusto": { 
+        "env_var": "url_rankingDeCusto",
+        "payload_func": payload_rankingDeCusto,
         "processar_func": None,
         "timeout": 60
     }
