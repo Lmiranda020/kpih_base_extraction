@@ -107,6 +107,18 @@ def payload_demonstracaoCustoUnitarioPorSaida(unidade):
         "considerarMatMed": True
     }
 
+def payload_painelComparativoDeCustos(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "considerarRecursosExternos":True,
+        "considerarMatMed":True,
+        "considerarHonorarios":True,
+        "exibeCustosInvalidos":True,
+        "deveConsiderarSADT":True
+    }
+
 
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
@@ -179,6 +191,12 @@ APIS_CONFIG = {
     "demonstracaoCustoUnitarioPorSaida": { 
         "env_var": "url_demonstracaoCustoUnitarioPorSaida",
         "payload_func": payload_demonstracaoCustoUnitarioPorSaida,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "painelComparativoDeCustos": { 
+        "env_var": "url_painelComparativoDeCustos",
+        "payload_func": payload_painelComparativoDeCustos,
         "processar_func": None,
         "timeout": 60
     }

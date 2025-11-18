@@ -13,6 +13,7 @@ from modules.api_rankingDeCusto import api_rankingDeCusto
 from modules.api_evolucaoDeCustos import api_evolucaoDeCustos
 from modules.api_demonstracaoCustoUnitario import api_demonstracaoCustoUnitario
 from modules.api_demonstracaoCustoUnitarioPorSaida import api_demonstracaoCustoUnitarioPorSaida
+from modules.api_painelComparativoDeCustos import api_painelComparativoDeCustos
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -70,6 +71,7 @@ def main():
         # ("evolucaoDeCustos", api_evolucaoDeCustos),
         # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
         # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
+        ("painelComparativoDeCustos", api_painelComparativoDeCustos),
 
     ]
     
