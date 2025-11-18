@@ -74,6 +74,19 @@ def payload_rankingDeCusto(unidade):
         "competenciaFinal": unidade['competencia']
     }
 
+def payload_evolucaoDeCustos(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "tipoPlanoDeConta": "UNIDADE",
+        "tipoRelatorio": "ANALITICO",
+        "considerarCustoComDepreciacao": True,
+        "considerarRecursosExternos": True,
+        "separarCustoFixoEVariavel": True,
+        "exibirOutrasDespesas": True
+    }
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -127,6 +140,12 @@ APIS_CONFIG = {
     "rankingDeCusto": { 
         "env_var": "url_rankingDeCusto",
         "payload_func": payload_rankingDeCusto,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "evolucaoDeCustos": { 
+        "env_var": "url_evolucaoDeCustos",
+        "payload_func": payload_evolucaoDeCustos,
         "processar_func": None,
         "timeout": 60
     }

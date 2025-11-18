@@ -10,6 +10,7 @@ from modules.api_custosIndividualizadoPorCentro import api_custosIndividualizado
 from modules.api_producoes import api_producoes
 from modules.api_estatistica import api_estatistica
 from modules.api_rankingDeCusto import api_rankingDeCusto
+from modules.api_evolucaoDeCustos import api_evolucaoDeCustos
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -63,7 +64,8 @@ def main():
         # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
         # ("producoes", api_producoes),
         # ("estatistica", api_estatistica),
-        ("rankingDeCusto", api_rankingDeCusto)
+        # ("rankingDeCusto", api_rankingDeCusto),
+        # ("evolucaoDeCustos", api_evolucaoDeCustos)
         
 
 
