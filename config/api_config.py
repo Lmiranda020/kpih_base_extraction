@@ -92,9 +92,21 @@ def payload_demonstracaoCustoUnitario(unidade):
     return {
         "competenciaInicial": unidade['competencia'],
         "competenciaFinal": unidade['competencia'],
+        "considerarRecursosExternos":True,
+        "considerarMatMed":True,
+        "considerarHonorarios":True,
+        "considerarDepreciacao":True
+    }
+
+def payload_demonstracaoCustoUnitarioPorSaida(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
         "considerarRecursosExternos": True,
         "considerarMatMed": True
     }
+
 
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
@@ -161,6 +173,12 @@ APIS_CONFIG = {
     "demonstracaoCustoUnitario": { 
         "env_var": "url_demonstracaoCustoUnitario",
         "payload_func": payload_demonstracaoCustoUnitario,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "demonstracaoCustoUnitarioPorSaida": { 
+        "env_var": "url_demonstracaoCustoUnitarioPorSaida",
+        "payload_func": payload_demonstracaoCustoUnitarioPorSaida,
         "processar_func": None,
         "timeout": 60
     }
