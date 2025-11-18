@@ -119,6 +119,14 @@ def payload_painelComparativoDeCustos(unidade):
         "deveConsiderarSADT":True
     }
 
+def payload_custoPorEspecialidade(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "considerarRecursosExternos":True,
+        "considerarDepreciacao":True
+    }
 
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
@@ -197,6 +205,12 @@ APIS_CONFIG = {
     "painelComparativoDeCustos": { 
         "env_var": "url_painelComparativoDeCustos",
         "payload_func": payload_painelComparativoDeCustos,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "custoPorEspecialidade": { 
+        "env_var": "url_custoPorEspecialidade",
+        "payload_func": payload_custoPorEspecialidade,
         "processar_func": None,
         "timeout": 60
     }
