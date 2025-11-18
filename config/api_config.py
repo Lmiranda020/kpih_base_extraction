@@ -87,6 +87,15 @@ def payload_evolucaoDeCustos(unidade):
         "exibirOutrasDespesas": True
     }
 
+def payload_demonstracaoCustoUnitario(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "considerarRecursosExternos": True,
+        "considerarMatMed": True
+    }
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -146,6 +155,12 @@ APIS_CONFIG = {
     "evolucaoDeCustos": { 
         "env_var": "url_evolucaoDeCustos",
         "payload_func": payload_evolucaoDeCustos,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "demonstracaoCustoUnitario": { 
+        "env_var": "url_demonstracaoCustoUnitario",
+        "payload_func": payload_demonstracaoCustoUnitario,
         "processar_func": None,
         "timeout": 60
     }

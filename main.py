@@ -11,6 +11,7 @@ from modules.api_producoes import api_producoes
 from modules.api_estatistica import api_estatistica
 from modules.api_rankingDeCusto import api_rankingDeCusto
 from modules.api_evolucaoDeCustos import api_evolucaoDeCustos
+from modules.api_demonstracaoCustoUnitario import api_demonstracaoCustoUnitario
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -65,7 +66,8 @@ def main():
         # ("producoes", api_producoes),
         # ("estatistica", api_estatistica),
         # ("rankingDeCusto", api_rankingDeCusto),
-        # ("evolucaoDeCustos", api_evolucaoDeCustos)
+        # ("evolucaoDeCustos", api_evolucaoDeCustos),
+        ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario)
         
 
 
