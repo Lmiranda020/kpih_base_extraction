@@ -8,6 +8,7 @@ from modules.api_notasFiscais import api_notasFiscais
 from modules.api_folhadepagamento import api_folhadepagamento
 from modules.api_custosIndividualizadoPorCentro import api_custosIndividualizadoPorCentro
 from modules.api_producoes import api_producoes
+from modules.api_estatistica import api_estatistica
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -59,7 +60,8 @@ def main():
         # ("NotasFiscais", api_notasFiscais),
         # ("FolhadePagamento", api_folhadepagamento),
         # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
-        ("producoes", api_producoes),
+        # ("producoes", api_producoes),
+        ("estatistica", api_estatistica),
         
 
 

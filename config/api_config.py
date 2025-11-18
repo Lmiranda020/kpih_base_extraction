@@ -59,6 +59,13 @@ def payload_producoes(unidade):
         "quantificacaoUnidadeProducao": "ABSOLUTO"
     }
 
+def payload_estatistica(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "quantificacaoUnidadeProducao": "ABSOLUTO"
+    }
 
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
@@ -101,6 +108,12 @@ APIS_CONFIG = {
     "producoes": { 
         "env_var": "url_producoes",
         "payload_func": payload_producoes,
+        "processar_func": None,
+        "timeout": 60
+    },
+     "estatistica": { 
+        "env_var": "url_estatistica",
+        "payload_func": payload_estatistica,
         "processar_func": None,
         "timeout": 60
     }
