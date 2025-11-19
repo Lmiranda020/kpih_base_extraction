@@ -15,6 +15,7 @@ from modules.api_demonstracaoCustoUnitario import api_demonstracaoCustoUnitario
 from modules.api_demonstracaoCustoUnitarioPorSaida import api_demonstracaoCustoUnitarioPorSaida
 from modules.api_painelComparativoDeCustos import api_painelComparativoDeCustos
 from modules.api_custoPorEspecialidade import api_custoPorEspecialidade
+from modules.api_analisedepartamental import api_analisedepartamental
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -73,7 +74,8 @@ def main():
         # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
         # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
         # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
-        ("custoPorEspecialidade", api_custoPorEspecialidade),
+        # ("custoPorEspecialidade", api_custoPorEspecialidade),
+        ("analisedepartamental", api_analisedepartamental),
 
     ]
     

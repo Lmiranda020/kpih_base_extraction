@@ -78,7 +78,7 @@ def api_competencia(caminho):
     df_consolidado = pd.concat(arquivo_unico, ignore_index=True)
     
     # Filtros e transformações
-    df_consolidado = df_consolidado[df_consolidado['ano'].astype(int) >= 2024]
+    df_consolidado = df_consolidado[df_consolidado['ano'].astype(int) >= 2025]
     df_consolidado['competencia'] = (
         df_consolidado['mes'].astype(str).str.zfill(2) + '/' + 
         df_consolidado['ano'].astype(str)

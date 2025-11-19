@@ -112,6 +112,7 @@ def payload_painelComparativoDeCustos(unidade):
     return {
         "competenciaInicial": unidade['competencia'],
         "competenciaFinal": unidade['competencia'],
+        "compararPor": "GESTORA",
         "considerarRecursosExternos":True,
         "considerarMatMed":True,
         "considerarHonorarios":True,
@@ -126,6 +127,15 @@ def payload_custoPorEspecialidade(unidade):
         "competenciaFinal": unidade['competencia'],
         "considerarRecursosExternos":True,
         "considerarDepreciacao":True
+    }
+
+def payload_analisedepartamental(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "considerarMatMed":True,
+        "considerarHonorarios":True
     }
 
 # Dicionário de configuração de todas as APIs
@@ -211,6 +221,12 @@ APIS_CONFIG = {
     "custoPorEspecialidade": { 
         "env_var": "url_custoPorEspecialidade",
         "payload_func": payload_custoPorEspecialidade,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "analisedepartamental": { 
+        "env_var": "url_analisedepartamental",
+        "payload_func": payload_analisedepartamental,
         "processar_func": None,
         "timeout": 60
     }
