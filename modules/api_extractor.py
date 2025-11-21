@@ -232,15 +232,15 @@ def extrair_dados_api(
 
         headers = {"Authorization": f"Bearer {token}"}
 
-        print(f"\n{'='*60}")
-        print(f"🔍 DEBUG - Detalhes da requisição:")
-        print(f"   Unidade: {nome_unidade} (ID: {id_unidade})")
-        print(f"   Competência: {competencia}")
-        print(f"   URL completa: {url}")
-        print(f"   Payload enviado:")
-        print(f"   {json.dumps(payload, indent=6, ensure_ascii=False)}")
-        print(f"Headers: {headers}")
-        print(f"{'='*60}\n")
+        # print(f"\n{'='*60}")
+        # print(f"🔍 DEBUG - Detalhes da requisição:")
+        # print(f"   Unidade: {nome_unidade} (ID: {id_unidade})")
+        # print(f"   Competência: {competencia}")
+        # print(f"   URL completa: {url}")
+        # print(f"   Payload enviado:")
+        # print(f"   {json.dumps(payload, indent=6, ensure_ascii=False)}")
+        # print(f"Headers: {headers}")
+        # print(f"{'='*60}\n")
 
         try:
             # Usa função com retry

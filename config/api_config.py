@@ -157,6 +157,16 @@ def payload_exercicioOrcamento(unidade):
     """Payload específico para API de exercicioOrcamento - usa GET"""
     return None  # GET não usa payload
 
+def payload_custoUnitarioPorPonderacao(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "tipoDeQualificacaoDeEstatistica": "PONDERADO",
+        "exibirCodigoContabilDosCentrosDeCusto": True,
+        "exibirCodigoTussDosExames": True
+    }
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -255,17 +265,23 @@ APIS_CONFIG = {
         "processar_func": None,
         "timeout": 60
     },
-     "composicaoEvolucaoDeReceita": { 
+    "composicaoEvolucaoDeReceita": { 
         "env_var": "url_composicaoEvolucaoDeReceita",
         "payload_func": payload_composicaoEvolucaoDeReceita,
         "processar_func": None,
         "timeout": 60
     },
-     "exercicioOrcamento": { 
+    "exercicioOrcamento": { 
         "env_var": "url_exercicioOrcamento",
         "payload_func": payload_exercicioOrcamento,
         "processar_func": None,
         "timeout": 60,
         "method": "GET"
+    },
+    "custoUnitarioPorPonderacao": { 
+        "env_var": "url_custoUnitarioPorPonderacao",
+        "payload_func": payload_custoUnitarioPorPonderacao,
+        "processar_func": None,
+        "timeout": 60
     }
 }
