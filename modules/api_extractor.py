@@ -90,6 +90,100 @@ def fazer_requisicao_com_retry(
     # Não deveria chegar aqui, mas por segurança
     return response, tempo_execucao, max_tentativas
 
+def carregar_de_para_unidades():
+    """
+    Carrega o arquivo de DE-PARA de unidades
+    
+    Returns:
+        DataFrame com as informações de unidades ou None se houver erro
+    """
+    try:
+        caminho_base = os.getenv('caminho_de_para_unidades')
+        
+        if not caminho_base:
+            print("⚠️ Variável 'caminho_de_para_unidades' não configurada no .env")
+            return None
+        
+        caminho_arquivo = os.path.join(caminho_base, "Unidades.xlsx")
+        
+        if not os.path.exists(caminho_arquivo):
+            print(f"⚠️ Arquivo de DE-PARA não encontrado: {caminho_arquivo}")
+            return None
+        
+        df_unidades = pd.read_excel(caminho_arquivo)
+        print(f"✅ Arquivo DE-PARA carregado: {len(df_unidades)} unidades")
+        print(f"   Colunas disponíveis: {', '.join(df_unidades.columns.tolist())}")
+        
+        return df_unidades
+        
+    except Exception as e:
+        print(f"❌ Erro ao carregar arquivo DE-PARA: {e}")
+        return None
+
+
+def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
+    """
+    Aplica o DE-PARA de unidades ao DataFrame final
+    
+    Args:
+        df_final: DataFrame com os dados extraídos
+        coluna_unidade: Nome da coluna que contém o nome da unidade
+    
+    Returns:
+        DataFrame com as informações de unidades mescladas
+    """
+    df_unidades = carregar_de_para_unidades()
+    
+    if df_unidades is None:
+        print("⚠️ Continuando sem aplicar DE-PARA de unidades")
+        return df_final
+    
+    # Identifica a coluna de nome da unidade no arquivo DE-PARA
+    # Possíveis nomes: 'unidade', 'nome', 'nome_unidade', etc.
+    colunas_possiveis = ['unidade', 'nome', 'nome_unidade', 'Unidade', 'Nome']
+    coluna_merge = None
+    
+    for col in colunas_possiveis:
+        if col in df_unidades.columns:
+            coluna_merge = col
+            break
+    
+    if coluna_merge is None:
+        print(f"⚠️ Não foi possível identificar a coluna de nome da unidade")
+        print(f"   Colunas disponíveis: {df_unidades.columns.tolist()}")
+        return df_final
+    
+    try:
+        # Faz o merge (VLOOKUP)
+        df_final_com_depara = df_final.merge(
+            df_unidades,
+            left_on=coluna_unidade,
+            right_on=coluna_merge,
+            how='left'
+        )
+        
+        # Conta quantas unidades encontraram match
+        total_registros = len(df_final)
+        registros_com_match = df_final_com_depara[coluna_merge].notna().sum()
+        
+        print(f"📊 DE-PARA aplicado:")
+        print(f"   Total de registros: {total_registros}")
+        print(f"   Registros com match: {registros_com_match}")
+        
+        if registros_com_match < total_registros:
+            unidades_sem_match = df_final[~df_final[coluna_unidade].isin(df_unidades[coluna_merge])][coluna_unidade].unique()
+            print(f"   ⚠️ {len(unidades_sem_match)} unidade(s) sem match:")
+            for unidade in list(unidades_sem_match)[:5]:
+                print(f"      - {unidade}")
+            if len(unidades_sem_match) > 5:
+                print(f"      ... e mais {len(unidades_sem_match) - 5}")
+        
+        return df_final_com_depara
+        
+    except Exception as e:
+        print(f"❌ Erro ao aplicar DE-PARA: {e}")
+        return df_final
+
 
 def extrair_dados_api(
     diretorio_arquivo_competencia,
@@ -495,6 +589,14 @@ def extrair_dados_api(
     
     try:
         df_final = pd.concat(dados_extraidos, ignore_index=True)
+
+        print(f"\n{'='*60}")
+        print(f"🔄 Aplicando DE-PARA de unidades...")
+        print(f"{'='*60}")
+        
+        df_final = aplicar_de_para_unidades(df_final, coluna_unidade='unidade')
+        
+        print(f"{'='*60}\n")
         
         # Calcula mês/ano anterior
         data_execucao = datetime.today()
