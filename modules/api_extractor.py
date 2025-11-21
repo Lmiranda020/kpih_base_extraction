@@ -184,6 +184,42 @@ def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
         print(f"❌ Erro ao aplicar DE-PARA: {e}")
         return df_final
 
+def padronizar_competencia(competencia):
+    """
+    Converte competência de 'jan/2025' para '01/2025'
+    
+    Args:
+        competencia: String no formato 'mes/ano' ou já no formato 'MM/YYYY'
+    
+    Returns:
+        String no formato 'MM/YYYY'
+    """
+    if pd.isna(competencia):
+        return competencia
+    
+    competencia_str = str(competencia).strip()
+    
+    # Dicionário de meses
+    meses = {
+        'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04',
+        'mai': '05', 'jun': '06', 'jul': '07', 'ago': '08',
+        'set': '09', 'out': '10', 'nov': '11', 'dez': '12'
+    }
+    
+    # Se já está no formato numérico, retorna
+    if '/' in competencia_str:
+        partes = competencia_str.split('/')
+        if len(partes) == 2 and partes[0].isdigit() and len(partes[0]) == 2:
+            return competencia_str
+    
+    # Converte de texto para numérico
+    for mes_texto, mes_numero in meses.items():
+        if mes_texto.lower() in competencia_str.lower():
+            ano = competencia_str.split('/')[-1].strip()
+            return f"{mes_numero}/{ano}"
+    
+    # Se não encontrou correspondência, retorna original
+    return competencia_str
 
 def extrair_dados_api(
     diretorio_arquivo_competencia,
@@ -611,6 +647,12 @@ def extrair_dados_api(
             ano_anterior = ano
 
         mes_e_ano = f"{mes_anterior:02d}_{ano_anterior}"
+
+        # converte a coluna de comptencia para deixar no formato 01/2025
+        if 'competencia' in df_final.columns:
+            print(f"\n🔄 Padronizando formato da competência...")
+            df_final['competencia'] = df_final['competencia'].apply(padronizar_competencia)
+            print(f"✅ Competências padronizadas para formato MM/YYYY")
 
         # Define nome e caminho do arquivo
         nome_arquivo = f"api_{nome_api.lower()}_{mes_e_ano}.csv"
