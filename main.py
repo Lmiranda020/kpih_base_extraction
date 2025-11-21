@@ -20,6 +20,7 @@ from modules.api_composicaoDeCustos import api_composicaoDeCustos
 from modules.api_composicaoEvolucaoDeReceita import api_composicaoEvolucaoDeReceita
 from modules.api_exercicioOrcamento import api_exercicioOrcamento
 from modules.api_custoUnitarioPorPonderacao import api_custoUnitarioPorPonderacao
+from modules.api_demonstracaoCustoUnitarioDosServicosAuxiliares import api_demonstracaoCustoUnitarioDosServicosAuxiliares
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -93,7 +94,8 @@ def main():
         # ("analisedepartamental", api_analisedepartamental),
         # ("composicaoDeCustos", api_composicaoDeCustos),
         # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
-        ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
+        # ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
+        ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
 
 
     ]

@@ -167,6 +167,14 @@ def payload_custoUnitarioPorPonderacao(unidade):
         "exibirCodigoTussDosExames": True
     }
 
+def payload_demonstracaoCustoUnitarioDosServicosAuxiliares(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "custoComRecursosExternos": True
+    }
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -281,6 +289,12 @@ APIS_CONFIG = {
     "custoUnitarioPorPonderacao": { 
         "env_var": "url_custoUnitarioPorPonderacao",
         "payload_func": payload_custoUnitarioPorPonderacao,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "demonstracaoCustoUnitarioDosServicosAuxiliares": { 
+        "env_var": "url_demonstracaoCustoUnitarioDosServicosAuxiliares",
+        "payload_func": payload_demonstracaoCustoUnitarioDosServicosAuxiliares,
         "processar_func": None,
         "timeout": 60
     }
