@@ -21,6 +21,7 @@ from modules.api_composicaoEvolucaoDeReceita import api_composicaoEvolucaoDeRece
 from modules.api_exercicioOrcamento import api_exercicioOrcamento
 from modules.api_custoUnitarioPorPonderacao import api_custoUnitarioPorPonderacao
 from modules.api_demonstracaoCustoUnitarioDosServicosAuxiliares import api_demonstracaoCustoUnitarioDosServicosAuxiliares
+from modules.api_benchmarkComposicaoDeCustos import api_benchmarkComposicaoDeCustos
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -85,8 +86,8 @@ def main():
         # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
         # ("producoes", api_producoes), 
         # ("estatistica", api_estatistica),
-        # ("rankingDeCusto", api_rankingDeCusto),
-        # ("evolucaoDeCustos", api_evolucaoDeCustos),
+        ("rankingDeCusto", api_rankingDeCusto),
+        ("evolucaoDeCustos", api_evolucaoDeCustos),
         # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
         # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
         # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
@@ -96,6 +97,7 @@ def main():
         # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
         # ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
         ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
+        ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos),
 
 
     ]

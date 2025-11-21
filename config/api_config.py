@@ -175,6 +175,18 @@ def payload_demonstracaoCustoUnitarioDosServicosAuxiliares(unidade):
         "custoComRecursosExternos": True
     }
 
+def payload_benchmarkComposicaoDeCustos(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia'],
+        "agrupamento": "GRUPO_DE_CONTA",
+        "tipoValor": "ACUMULADO",
+        "exibeValorAbsoluto": True,
+        "custoComDepreciacao": True,
+        "custoComRecursosExternos": True
+    }
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -294,6 +306,12 @@ APIS_CONFIG = {
     },
     "demonstracaoCustoUnitarioDosServicosAuxiliares": { 
         "env_var": "url_demonstracaoCustoUnitarioDosServicosAuxiliares",
+        "payload_func": payload_demonstracaoCustoUnitarioDosServicosAuxiliares,
+        "processar_func": None,
+        "timeout": 60
+    },
+    "benchmarkComposicaoDeCustos": { 
+        "env_var": "url_benchmarkComposicaoDeCustos",
         "payload_func": payload_demonstracaoCustoUnitarioDosServicosAuxiliares,
         "processar_func": None,
         "timeout": 60
