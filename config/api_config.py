@@ -138,6 +138,25 @@ def payload_analisedepartamental(unidade):
         "considerarHonorarios":True
     }
 
+def payload_composicaoDeCustos(unidade):
+    """Payload específico para API composição de custo"""
+    return {
+        "competencia": unidade['competencia'],
+        "considerarRecursosExternos":True,
+        "considerarDepreciacao":True
+    }
+
+def payload_composicaoEvolucaoDeReceita(unidade):
+    """Payload específico para API de Benchmarker"""
+    return {
+        "competenciaInicial": unidade['competencia'],
+        "competenciaFinal": unidade['competencia']
+    }
+
+def payload_exercicioOrcamento(unidade):
+    """Payload específico para API de exercicioOrcamento - usa GET"""
+    return None  # GET não usa payload
+
 # Dicionário de configuração de todas as APIs
 APIS_CONFIG = {
     "Consumo": {
@@ -229,5 +248,24 @@ APIS_CONFIG = {
         "payload_func": payload_analisedepartamental,
         "processar_func": None,
         "timeout": 60
+    },
+    "composicaoDeCustos": { 
+        "env_var": "url_composicaoDeCustos",
+        "payload_func": payload_composicaoDeCustos,
+        "processar_func": None,
+        "timeout": 60
+    },
+     "composicaoEvolucaoDeReceita": { 
+        "env_var": "url_composicaoEvolucaoDeReceita",
+        "payload_func": payload_composicaoEvolucaoDeReceita,
+        "processar_func": None,
+        "timeout": 60
+    },
+     "exercicioOrcamento": { 
+        "env_var": "url_exercicioOrcamento",
+        "payload_func": payload_exercicioOrcamento,
+        "processar_func": None,
+        "timeout": 60,
+        "method": "GET"
     }
 }

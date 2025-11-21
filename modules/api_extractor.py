@@ -204,6 +204,14 @@ def extrair_dados_api(
         # Monta payload específico da API
         try:
             payload = payload_func(unidade)
+            # print(f"\n{'='*60}")
+            # print(f"🔍 DEBUG - Detalhes da requisição:")
+            # print(f"   Unidade: {nome_unidade} (ID: {id_unidade})")
+            # print(f"   Competência: {competencia}")
+            # print(f"   URL completa: {url_base}")
+            # print(f"   Payload enviado:")
+            # print(f"   {json.dumps(payload, indent=6, ensure_ascii=False)}")
+            # print(f"{'='*60}\n")
         except Exception as e:
             erro_msg = f"Erro ao montar payload - {e}"
             erros.append(f"{nome_unidade}: {erro_msg}")
@@ -220,7 +228,19 @@ def extrair_dados_api(
             continue
 
         url = f"{url_base}{id_unidade}"
+        # print(f"   URL completa: {url}")
+
         headers = {"Authorization": f"Bearer {token}"}
+
+        print(f"\n{'='*60}")
+        print(f"🔍 DEBUG - Detalhes da requisição:")
+        print(f"   Unidade: {nome_unidade} (ID: {id_unidade})")
+        print(f"   Competência: {competencia}")
+        print(f"   URL completa: {url}")
+        print(f"   Payload enviado:")
+        print(f"   {json.dumps(payload, indent=6, ensure_ascii=False)}")
+        print(f"Headers: {headers}")
+        print(f"{'='*60}\n")
 
         try:
             # Usa função com retry
@@ -314,6 +334,33 @@ def extrair_dados_api(
                         competencia=competencia,
                         status='erro',
                         erro=f"HTTP 401 - {erro_msg}",
+                        tempo_execucao=tempo_execucao
+                    )
+
+            elif response.status_code == 500:
+                # Erro 500 geralmente indica que:
+                # 1. A competência solicitada não está disponível para extração
+                # 2. O tipo de relatório não é aplicável para esta unidade
+                try:
+                    response_data = response.json()
+                    erro_detalhes = response_data.get('message', 'Sem detalhes')
+                except:
+                    erro_detalhes = 'Não foi possível obter detalhes do erro'
+                
+                erro_msg = f"Competência indisponível ou relatório não aplicável - {erro_detalhes}"
+                erros.append(f"{nome_unidade}: {erro_msg}")
+                print(f"   ⚠️ {erro_msg}")
+                print(f"   💡 Possíveis causas:")
+                print(f"      • Competência {competencia} ainda não processada para este relatório")
+                print(f"      • Tipo de unidade incompatível (ex: UBS/UPA sem linha de contratação)")
+                
+                if tracker:
+                    tracker.registrar_execucao(
+                        endpoint=nome_api,
+                        unidade=nome_unidade,
+                        competencia=competencia,
+                        status='indisponivel',
+                        erro=erro_msg,
                         tempo_execucao=tempo_execucao
                     )
             

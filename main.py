@@ -16,6 +16,9 @@ from modules.api_demonstracaoCustoUnitarioPorSaida import api_demonstracaoCustoU
 from modules.api_painelComparativoDeCustos import api_painelComparativoDeCustos
 from modules.api_custoPorEspecialidade import api_custoPorEspecialidade
 from modules.api_analisedepartamental import api_analisedepartamental
+from modules.api_composicaoDeCustos import api_composicaoDeCustos
+from modules.api_composicaoEvolucaoDeReceita import api_composicaoEvolucaoDeReceita
+from modules.api_exercicioOrcamento import api_exercicioOrcamento
 from modules.execution_tracker import ExecutionTracker
 from dotenv import load_dotenv
 import sys
@@ -54,11 +57,22 @@ def main():
     print("="*60)
     
     diretorio_arquivo_competencia = api_competencia(caminho)
-    
+
     if not diretorio_arquivo_competencia:
         print("\n❌ Arquivo de competências não gerado")
         sys.exit(1)
     
+
+    # Extrair competências
+    print("="*60)
+    print("📅 PASSO 1: Extraindo exercicioOrcamento")
+    print("="*60)
+
+    diretorio_arquivo_exercicioOrcamento = api_exercicioOrcamento(caminho)
+    
+    if not diretorio_arquivo_exercicioOrcamento:
+        print("\n❌ Arquivo de exercicioOrcamento não gerado")
+
     # Executar todas as APIs
     apis_para_executar = [
         # ("Consumo", api_consumo),
@@ -75,7 +89,10 @@ def main():
         # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
         # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
         # ("custoPorEspecialidade", api_custoPorEspecialidade),
-        ("analisedepartamental", api_analisedepartamental),
+        # ("analisedepartamental", api_analisedepartamental),
+        ("composicaoDeCustos", api_composicaoDeCustos),
+        # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
+
 
     ]
     
