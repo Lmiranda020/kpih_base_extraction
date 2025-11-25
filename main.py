@@ -125,6 +125,7 @@ def main():
         ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
         ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
         ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos)
+        
     ]
     
     resultados = {}
