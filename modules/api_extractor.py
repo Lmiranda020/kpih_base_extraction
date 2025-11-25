@@ -358,7 +358,7 @@ def extrair_dados_api(
             continue
 
         url = f"{url_base}{id_unidade}"
-        print(f"   URL completa: {url}")
+        # print(f"   URL completa: {url}")
 
         headers = {"Authorization": f"Bearer {token}"}
 

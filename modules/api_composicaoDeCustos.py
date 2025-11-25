@@ -45,6 +45,12 @@ def api_composicaoDeCustos(
                     'LUCY',
                     'CER'
                 ]
+
+                palavras_chave_invalidas = ["Filial 40 - HOSPITAL DIA CAMPO LIMPO - CEJAM", "Filial 40 - HOSPITAL DIA M´BOI MIRIM I - CEJAM", "Filial 40 - HOSPITAL DIA M´BOI MIRIM II - CEJAM"]
+
+                # Remove unidades inválidas
+                pattern_invalidas = '|'.join(palavras_chave_invalidas)
+                df_temp = df_temp[~df_temp['nome'].str.contains(pattern_invalidas, case=False, na=False)]
                 
                 # Cria regex pattern: busca qualquer uma das palavras (case-insensitive)
                 # Exemplo: 'HOSPITAL|AME|LUCI'

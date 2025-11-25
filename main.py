@@ -28,6 +28,45 @@ from dotenv import load_dotenv
 import sys
 import os
 
+def filtrar_arquivos_para_upload(arquivos_gerados):
+    """
+    Filtra apenas os arquivos que devem ser enviados ao Google Drive
+    
+    Args:
+        arquivos_gerados: Lista com todos os arquivos gerados
+    
+    Returns:
+        Lista com arquivos filtrados
+    """
+    padroes_incluir = [
+        'api_benchmarkComposicaoDeCustos', 'api_evolucaoDeCustos', 'api_rankingDeCusto', 'api_demonstracaoCustoUnitarioDosServicosAuxiliares'
+    ]
+    
+    arquivos_filtrados = []
+    arquivos_excluidos = []
+    
+    for arquivo in arquivos_gerados:
+        # Verifica se o arquivo corresponde a algum padrão
+        deve_incluir = any(padrao in arquivo.lower() for padrao in padroes_incluir)
+        
+        if deve_incluir:
+            arquivos_filtrados.append(arquivo)
+        else:
+            arquivos_excluidos.append(arquivo)
+    
+    # Exibe resumo do filtro
+    if arquivos_excluidos:
+        print(f"\n📋 Filtro de Upload:")
+        print(f"   ✅ Arquivos a enviar: {len(arquivos_filtrados)}")
+        print(f"   ⏭️  Arquivos excluídos: {len(arquivos_excluidos)}")
+        print(f"\n   Excluídos:")
+        for arq in arquivos_excluidos:
+            print(f"      • {arq}")
+        print()
+    
+    return arquivos_filtrados
+
+
 def main():
     print("\n" + "="*60)
     print("🚀 INICIANDO AUTOMAÇÃO DE EXTRAÇÃO DE DADOS")
@@ -64,60 +103,48 @@ def main():
         print("\n❌ Arquivo de competências não gerado")
         sys.exit(1)
     
-
-    # Extrair exercicio dos orçamentos
-    # print("="*60)
-    # print("📅 PASSO 1: Extraindo exercicioOrcamento")
-    # print("="*60)
-
-    # diretorio_arquivo_exercicioOrcamento = api_exercicioOrcamento(caminho)
-    
-    # if not diretorio_arquivo_exercicioOrcamento:
-    #     print("\n❌ Arquivo de exercicioOrcamento não gerado")
-
     # Executar todas as APIs
     apis_para_executar = [
-        # ("Consumo", api_consumo),
-        # ("QuantidadeLeito", api_quantidadeLeito),
-        # ("QuantidadeCirurgia", api_quantidadeCirurgia),
-        # ("NotasFiscais", api_notasFiscais),
-        # ("FolhadePagamento", api_folhadepagamento),
-        # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
-        # ("producoes", api_producoes), 
-        # ("estatistica", api_estatistica),
-        # ("rankingDeCusto", api_rankingDeCusto),
-        # ("evolucaoDeCustos", api_evolucaoDeCustos),
-        # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
-        # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
-        # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
-        # ("custoPorEspecialidade", api_custoPorEspecialidade),
-        # ("analisedepartamental", api_analisedepartamental),
+        ("Consumo", api_consumo),
+        ("QuantidadeLeito", api_quantidadeLeito),
+        ("QuantidadeCirurgia", api_quantidadeCirurgia),
+        ("NotasFiscais", api_notasFiscais),
+        ("FolhadePagamento", api_folhadepagamento),
+        ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
+        ("producoes", api_producoes), 
+        ("estatistica", api_estatistica),
+        ("rankingDeCusto", api_rankingDeCusto),
+        ("evolucaoDeCustos", api_evolucaoDeCustos),
+        ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
+        ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
+        ("painelComparativoDeCustos", api_painelComparativoDeCustos),
+        ("custoPorEspecialidade", api_custoPorEspecialidade),
+        ("analisedepartamental", api_analisedepartamental),
         ("composicaoDeCustos", api_composicaoDeCustos),
-        # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
-        # ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
-        # ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
-        # ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos),
+        ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
+        ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
+        ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
+        ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos)
+
     ]
     
     resultados = {}
-    arquivos_gerados = []  # Lista para armazenar os arquivos gerados
+    arquivos_gerados = []
     
     for nome_api, funcao_api in apis_para_executar:
         try:
-            # Configuração específica para QuantidadeLeito
             if nome_api in ["QuantidadeLeito", "QuantidadeCirurgia"]:
                 arquivo = funcao_api(
                     diretorio_arquivo_competencia, 
                     caminho, 
                     tracker,
-                    delay_entre_chamadas=2.0,      # 2s entre requisições
-                    max_tentativas_403=4,          # 3 tentativas em caso de 403
-                    backoff_inicial=3.0,           # Espera inicial de 3s no retry
-                    agrupar_por_unidade=True,      # Processa todas competências de uma unidade antes de passar para próxima
-                    delay_entre_unidades=5.0       # 5s ao mudar de unidade
+                    delay_entre_chamadas=2.0,
+                    max_tentativas_403=4,
+                    backoff_inicial=3.0,
+                    agrupar_por_unidade=True,
+                    delay_entre_unidades=5.0
                 )
             else:
-                # Outras APIs usam configuração padrão
                 arquivo = funcao_api(diretorio_arquivo_competencia, caminho, tracker)
             
             resultados[nome_api] = {
@@ -125,7 +152,6 @@ def main():
                 "arquivo": arquivo
             }
 
-            # Adiciona arquivo à lista se foi gerado com sucesso
             if arquivo:
                 arquivos_gerados.append(os.path.basename(arquivo))
 
@@ -147,7 +173,6 @@ def main():
             print(f"✅ Relatório CSV gerado: {caminho_csv}")
             print(f"✅ Relatório TXT gerado: {caminho_txt}\n")
 
-            # Adiciona os relatórios à lista de arquivos
             arquivos_gerados.append(os.path.basename(caminho_csv))
             arquivos_gerados.append(os.path.basename(caminho_txt))
                                     
@@ -157,38 +182,59 @@ def main():
     except Exception as e:
         print(f"❌ Erro ao gerar relatório: {e}\n")
 
+    # ========================================================================
+    # UPLOAD PARA GOOGLE DRIVE - COM FILTRO
+    # ========================================================================
     print("="*60)
     print("📤 PASSO 5: Upload para Google Drive")
     print("="*60)
+    
     if arquivos_gerados:
         try:
+            # APLICA O FILTRO - Apenas arquivos específicos
+            arquivos_para_enviar = filtrar_arquivos_para_upload(arquivos_gerados)
             
-            # Monta o caminho completo do diretório com a competência
-            diretorio_com_competencia = os.path.join(caminho)
-            
-            print(f"📁 Diretório dos arquivos: {diretorio_com_competencia}")
-            print(f"📊 Total de arquivos para enviar: {len(arquivos_gerados)}\n")
-            
-             # Obtém o caminho das credenciais do .env
-            credenciais_path = os.getenv('GOOGLE_CREDENTIALS_PATH')
-            
-            # Converte para caminho absoluto se for relativo
-            if credenciais_path and not os.path.isabs(credenciais_path):
-                credenciais_path = os.path.abspath(credenciais_path)
-
-            # Faz o upload dos arquivos
-            resultados_upload = salvar_arquivos_no_drive(
-                bases=arquivos_gerados,
-                diretorio=diretorio_com_competencia,
-                credenciais_path=credenciais_path,
-                sobrescrever=True  # Sobrescreve arquivos existentes
-            )
-            
-            if resultados_upload:
-                print(f"\n✅ Upload para Google Drive concluído!")
+            if not arquivos_para_enviar:
+                print("⚠️ Nenhum arquivo corresponde aos critérios de upload\n")
             else:
-                print(f"\n⚠️ Houve problemas no upload para o Google Drive")
+                diretorio_com_competencia = os.path.join(caminho)
                 
+                print(f"📁 Diretório dos arquivos: {diretorio_com_competencia}")
+                print(f"📊 Total de arquivos para enviar: {len(arquivos_para_enviar)}\n")
+                
+                # Obtém o caminho das credenciais do .env
+                credenciais_path = os.getenv('GOOGLE_CREDENTIALS_PATH')
+                
+                # # Debug - Verifica o valor lido
+                # print(f"🔍 DEBUG - Credenciais do .env: '{credenciais_path}'")
+                
+                # if credenciais_path:
+                #     # Remove espaços em branco extras (caso existam)
+                #     credenciais_path = credenciais_path.strip()
+                    
+                #     # Converte para caminho absoluto se for relativo
+                #     if not os.path.isabs(credenciais_path):
+                #         credenciais_path = os.path.abspath(credenciais_path)
+                    
+                #     print(f"🔍 DEBUG - Caminho absoluto: '{credenciais_path}'")
+                #     print(f"🔍 DEBUG - Arquivo existe: {os.path.exists(credenciais_path)}\n")
+                # else:
+                #     print("❌ GOOGLE_CREDENTIALS_PATH não encontrado no .env\n")
+
+                folder_id = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+                # Faz o upload dos arquivos FILTRADOS
+                resultados_upload = salvar_arquivos_no_drive(
+                    bases=arquivos_para_enviar,
+                    diretorio=diretorio_com_competencia,
+                    folder_id=folder_id,
+                    criar_google_sheets=True
+                )
+                
+                if resultados_upload:
+                    print(f"\n✅ Upload para Google Drive concluído!")
+                else:
+                    print(f"\n⚠️ Houve problemas no upload para o Google Drive")
+                    
         except Exception as e:
             print(f"\n❌ Erro ao fazer upload para Google Drive: {e}")
             import traceback
@@ -201,7 +247,6 @@ def main():
     print("📋 RELATÓRIO FINAL - CONSOLE")
     print("="*60 + "\n")
     
-    # Estatísticas gerais
     resumo = tracker.obter_resumo()
     
     print(f"📊 ESTATÍSTICAS GERAIS:")
@@ -234,9 +279,11 @@ def main():
     
     print("="*60 + "\n")
     
-    if caminho_txt:
-        print(f"📄 Para mais detalhes, consulte o relatório em:")
-        print(f"   {caminho_txt}\n")
+    if resumo.get('endpoints'):
+        caminho_txt = tracker.gerar_relatorio(caminho)[1]
+        if caminho_txt:
+            print(f"📄 Para mais detalhes, consulte o relatório em:")
+            print(f"   {caminho_txt}\n")
 
 if __name__ == "__main__":
     try:
