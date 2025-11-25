@@ -2,6 +2,38 @@
 Configurações de todas as APIs
 Cada API define seu próprio payload e processamento
 """
+def processar_composicaoDeCustos(dados, unidade):
+    """
+    Processa resposta da API de Composição de Custos
+    Retorna múltiplos DataFrames consolidados
+    """
+    import pandas as pd
+    
+    dfs = []
+    nome_unidade = unidade['nome']
+    competencia = unidade['competencia']
+    
+    # Mapeia cada tipo de composição
+    tipos_composicao = {
+        'composicaoPorItem': 'POR_ITEM',
+        'composicaoPorVolume': 'POR_VOLUME',
+        'composicaoPorServico': 'POR_SERVICO',
+        'composicaoDosServicos': 'DOS_SERVICOS',
+        'composicaoPorNatureza': 'POR_NATUREZA'
+    }
+    
+    for chave, tipo in tipos_composicao.items():
+        if chave in dados and dados[chave]:
+            df = pd.DataFrame(dados[chave])
+            df['tipo_composicao'] = tipo
+            df['unidade'] = nome_unidade
+            df['competencia'] = competencia
+            dfs.append(df)
+    
+    if dfs:
+        return pd.concat(dfs, ignore_index=True)
+    else:
+        return None
 
 def payload_consumo(unidade):
     """Payload específico para API de Consumo"""
@@ -282,7 +314,7 @@ APIS_CONFIG = {
     "composicaoDeCustos": { 
         "env_var": "url_composicaoDeCustos",
         "payload_func": payload_composicaoDeCustos,
-        "processar_func": None,
+        "processar_func": processar_composicaoDeCustos,
         "timeout": 60
     },
     "composicaoEvolucaoDeReceita": { 

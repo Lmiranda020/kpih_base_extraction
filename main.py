@@ -23,6 +23,7 @@ from modules.api_custoUnitarioPorPonderacao import api_custoUnitarioPorPonderaca
 from modules.api_demonstracaoCustoUnitarioDosServicosAuxiliares import api_demonstracaoCustoUnitarioDosServicosAuxiliares
 from modules.api_benchmarkComposicaoDeCustos import api_benchmarkComposicaoDeCustos
 from modules.execution_tracker import ExecutionTracker
+from modules.google_drive_upload import salvar_arquivos_no_drive
 from dotenv import load_dotenv
 import sys
 import os
@@ -37,8 +38,6 @@ def main():
     # Setup inicial
     load_dotenv()
     print("✅ Variáveis de ambiente carregadas\n")
-    caminho = os.getenv("CAMINHO_FIXO")
-    print(caminho)
     print("🔐 Verificando conexão VPN...")
     try:
         conectar_vpn()
@@ -66,15 +65,15 @@ def main():
         sys.exit(1)
     
 
-    # Extrair competências
-    print("="*60)
-    print("📅 PASSO 1: Extraindo exercicioOrcamento")
-    print("="*60)
+    # Extrair exercicio dos orçamentos
+    # print("="*60)
+    # print("📅 PASSO 1: Extraindo exercicioOrcamento")
+    # print("="*60)
 
-    diretorio_arquivo_exercicioOrcamento = api_exercicioOrcamento(caminho)
+    # diretorio_arquivo_exercicioOrcamento = api_exercicioOrcamento(caminho)
     
-    if not diretorio_arquivo_exercicioOrcamento:
-        print("\n❌ Arquivo de exercicioOrcamento não gerado")
+    # if not diretorio_arquivo_exercicioOrcamento:
+    #     print("\n❌ Arquivo de exercicioOrcamento não gerado")
 
     # Executar todas as APIs
     apis_para_executar = [
@@ -86,23 +85,22 @@ def main():
         # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
         # ("producoes", api_producoes), 
         # ("estatistica", api_estatistica),
-        ("rankingDeCusto", api_rankingDeCusto),
-        ("evolucaoDeCustos", api_evolucaoDeCustos),
+        # ("rankingDeCusto", api_rankingDeCusto),
+        # ("evolucaoDeCustos", api_evolucaoDeCustos),
         # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
         # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
         # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
         # ("custoPorEspecialidade", api_custoPorEspecialidade),
         # ("analisedepartamental", api_analisedepartamental),
-        # ("composicaoDeCustos", api_composicaoDeCustos),
+        ("composicaoDeCustos", api_composicaoDeCustos),
         # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
         # ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
-        ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
-        ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos),
-
-
+        # ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
+        # ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos),
     ]
     
     resultados = {}
+    arquivos_gerados = []  # Lista para armazenar os arquivos gerados
     
     for nome_api, funcao_api in apis_para_executar:
         try:
@@ -126,6 +124,11 @@ def main():
                 "sucesso": arquivo is not None,
                 "arquivo": arquivo
             }
+
+            # Adiciona arquivo à lista se foi gerado com sucesso
+            if arquivo:
+                arquivos_gerados.append(os.path.basename(arquivo))
+
         except Exception as e:
             print(f"❌ Erro ao executar {nome_api}: {e}")
             resultados[nome_api] = {
@@ -143,12 +146,56 @@ def main():
         if caminho_csv and caminho_txt:
             print(f"✅ Relatório CSV gerado: {caminho_csv}")
             print(f"✅ Relatório TXT gerado: {caminho_txt}\n")
+
+            # Adiciona os relatórios à lista de arquivos
+            arquivos_gerados.append(os.path.basename(caminho_csv))
+            arquivos_gerados.append(os.path.basename(caminho_txt))
+                                    
         else:
             print("⚠️ Não foi possível gerar relatórios\n")
             
     except Exception as e:
         print(f"❌ Erro ao gerar relatório: {e}\n")
-    
+
+    print("="*60)
+    print("📤 PASSO 5: Upload para Google Drive")
+    print("="*60)
+    if arquivos_gerados:
+        try:
+            
+            # Monta o caminho completo do diretório com a competência
+            diretorio_com_competencia = os.path.join(caminho)
+            
+            print(f"📁 Diretório dos arquivos: {diretorio_com_competencia}")
+            print(f"📊 Total de arquivos para enviar: {len(arquivos_gerados)}\n")
+            
+             # Obtém o caminho das credenciais do .env
+            credenciais_path = os.getenv('GOOGLE_CREDENTIALS_PATH')
+            
+            # Converte para caminho absoluto se for relativo
+            if credenciais_path and not os.path.isabs(credenciais_path):
+                credenciais_path = os.path.abspath(credenciais_path)
+
+            # Faz o upload dos arquivos
+            resultados_upload = salvar_arquivos_no_drive(
+                bases=arquivos_gerados,
+                diretorio=diretorio_com_competencia,
+                credenciais_path=credenciais_path,
+                sobrescrever=True  # Sobrescreve arquivos existentes
+            )
+            
+            if resultados_upload:
+                print(f"\n✅ Upload para Google Drive concluído!")
+            else:
+                print(f"\n⚠️ Houve problemas no upload para o Google Drive")
+                
+        except Exception as e:
+            print(f"\n❌ Erro ao fazer upload para Google Drive: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("⚠️ Nenhum arquivo foi gerado para fazer upload\n")
+
     # Relatório final no console
     print("="*60)
     print("📋 RELATÓRIO FINAL - CONSOLE")

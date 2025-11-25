@@ -358,7 +358,7 @@ def extrair_dados_api(
             continue
 
         url = f"{url_base}{id_unidade}"
-        # print(f"   URL completa: {url}")
+        print(f"   URL completa: {url}")
 
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -388,6 +388,13 @@ def extrair_dados_api(
             if response.status_code == 200:
                 try:
                     dados = response.json()
+
+                    # # ===== ADICIONE ESTE DEBUG AQUI =====
+                    # print(f"   🔍 DEBUG - Estrutura da resposta:")
+                    # print(f"   Tipo: {type(dados)}")
+                    # print(f"   Chaves: {dados.keys() if isinstance(dados, dict) else 'Não é dict'}")
+                    # print(f"   Conteúdo (primeiros 500 chars): {str(dados)[:500]}")
+                    # # ===================================
                     
                     # Processa response (customizado ou padrão)
                     if processar_func:
