@@ -4,6 +4,15 @@ import pandas as pd
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import os
+import sys
+
+def get_resource_path(relative_path):
+    """Obtém caminho correto tanto em desenvolvimento quanto em executável"""
+    try:
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 def api_competencia(caminho):
     # Validações iniciais
@@ -16,11 +25,14 @@ def api_competencia(caminho):
         print("❌ Variável de ambiente 'url_competencia' não configurada!")
         return None
     
-    if not os.path.exists(r'data\unidades_tokens.xlsx'):
-        print("❌ Arquivo 'unidades_tokens.xlsx' não encontrado!")
+    # USA get_resource_path para encontrar o arquivo Excel
+    caminho_excel = get_resource_path('data/unidades_tokens.xlsx')
+    
+    if not os.path.exists(caminho_excel):
+        print(f"❌ Arquivo 'unidades_tokens.xlsx' não encontrado em: {caminho_excel}")
         return None
 
-    df_unidades = pd.read_excel(r'data\unidades_tokens.xlsx')
+    df_unidades = pd.read_excel(caminho_excel)
     
     if df_unidades.empty:
         print("❌ Arquivo Excel está vazio!")
