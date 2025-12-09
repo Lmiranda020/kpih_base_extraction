@@ -92,7 +92,7 @@ def fazer_requisicao_com_retry(
 
 def carregar_de_para_unidades():
     """
-    Carrega o arquivo de DE-PARA de unidades
+    Carrega o arquivo de DE-PARA de unidades com tratamento correto de encoding
     
     Returns:
         DataFrame com as informações de unidades ou None se houver erro
@@ -110,20 +110,40 @@ def carregar_de_para_unidades():
             print(f"⚠️ Arquivo de DE-PARA não encontrado: {caminho_arquivo}")
             return None
         
-        df_unidades = pd.read_excel(caminho_arquivo)
+        # Lê o arquivo Excel com engine openpyxl para melhor suporte a encoding
+        df_unidades = pd.read_excel(
+            caminho_arquivo,
+            engine='openpyxl'  # Engine que lida melhor com caracteres especiais
+        )
+        
+        # Garante que todas as colunas de texto estejam em UTF-8
+        for col in df_unidades.select_dtypes(include=['object']).columns:
+            df_unidades[col] = df_unidades[col].apply(
+                lambda x: x.encode('latin-1').decode('utf-8') if isinstance(x, str) and 'Ã' in x else x
+            )
+        
         print(f"✅ Arquivo DE-PARA carregado: {len(df_unidades)} unidades")
         print(f"   Colunas disponíveis: {', '.join(df_unidades.columns.tolist())}")
+        
+        # Mostra exemplos de nomes para validar encoding
+        if 'unidade' in df_unidades.columns or 'nome' in df_unidades.columns:
+            col_exemplo = 'unidade' if 'unidade' in df_unidades.columns else 'nome'
+            print(f"   Exemplos de nomes (primeiros 3):")
+            for nome in df_unidades[col_exemplo].head(3):
+                print(f"      - {nome}")
         
         return df_unidades
         
     except Exception as e:
         print(f"❌ Erro ao carregar arquivo DE-PARA: {e}")
+        import traceback
+        print(f"   Detalhes: {traceback.format_exc()}")
         return None
 
 
 def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
     """
-    Aplica o DE-PARA de unidades ao DataFrame final
+    Aplica o DE-PARA de unidades ao DataFrame final com tratamento de encoding
     
     Args:
         df_final: DataFrame com os dados extraídos
@@ -139,7 +159,6 @@ def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
         return df_final
     
     # Identifica a coluna de nome da unidade no arquivo DE-PARA
-    # Possíveis nomes: 'unidade', 'nome', 'nome_unidade', etc.
     colunas_possiveis = ['unidade', 'nome', 'nome_unidade', 'Unidade', 'Nome']
     coluna_merge = None
     
@@ -154,6 +173,11 @@ def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
         return df_final
     
     try:
+        # Normaliza strings em ambos os DataFrames antes do merge
+        # Remove espaços extras e padroniza
+        df_final[coluna_unidade] = df_final[coluna_unidade].str.strip()
+        df_unidades[coluna_merge] = df_unidades[coluna_merge].str.strip()
+        
         # Faz o merge (VLOOKUP)
         df_final_com_depara = df_final.merge(
             df_unidades,
@@ -182,6 +206,8 @@ def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
         
     except Exception as e:
         print(f"❌ Erro ao aplicar DE-PARA: {e}")
+        import traceback
+        print(f"   Detalhes: {traceback.format_exc()}")
         return df_final
 
 def padronizar_competencia(competencia):

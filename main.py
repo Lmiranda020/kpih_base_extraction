@@ -24,9 +24,11 @@ from modules.api_demonstracaoCustoUnitarioDosServicosAuxiliares import api_demon
 from modules.api_benchmarkComposicaoDeCustos import api_benchmarkComposicaoDeCustos
 from modules.execution_tracker import ExecutionTracker
 from modules.google_drive_upload import salvar_arquivos_no_drive
+from modules.ponto import consolidar_apos_extracao, processar_incremental
 from dotenv import load_dotenv
 import sys
 import os
+
 
 def filtrar_arquivos_para_upload(arquivos_gerados):
     """
@@ -39,7 +41,10 @@ def filtrar_arquivos_para_upload(arquivos_gerados):
         Lista com arquivos filtrados
     """
     padroes_incluir = [
-        'api_benchmarkComposicaoDeCustos', 'api_evolucaoDeCustos', 'api_rankingDeCusto', 'api_demonstracaoCustoUnitarioDosServicosAuxiliares'
+        'api_benchmarkComposicaoDeCustos', 
+        'api_evolucaoDeCustos', 
+        'api_rankingDeCusto', 
+        'api_demonstracaoCustoUnitarioDosServicosAuxiliares'
     ]
     
     arquivos_filtrados = []
@@ -92,7 +97,9 @@ def main():
         print(f"❌ Erro ao definir diretório: {e}")
         sys.exit(1)
     
-    # Extrair competências
+    # ====================================================================
+    # PASSO 1: EXTRAIR COMPETÊNCIAS
+    # ====================================================================
     print("="*60)
     print("📅 PASSO 1: Extraindo competências")
     print("="*60)
@@ -102,30 +109,94 @@ def main():
     if not diretorio_arquivo_competencia:
         print("\n❌ Arquivo de competências não gerado")
         sys.exit(1)
+
+    # ====================================================================
+    # PASSO 2: PROCESSAMENTO INCREMENTAL
+    # ====================================================================
+    print("\n" + "="*60)
+    print("📅 PASSO 2: Análise Incremental de Competências")
+    print("="*60)
+
+    # Lista de arquivos das APIs que serão consolidadas
+    arquivos_apis_para_consolidar = [
+        # "api_estatistica.xlsx",
+        # "api_rankingDeCusto.xlsx",
+        # "api_evolucaoDeCustos.xlsx",
+        # "api_demonstracaoCustoUnitario.xlsx",
+        # "api_demonstracaoCustoUnitarioPorSaida.xlsx",
+        # "api_painelComparativoDeCustos.xlsx",
+        # "api_custoPorEspecialidade.xlsx",
+        # "api_analisedepartamental.xlsx",
+        # "api_composicaoDeCustos.xlsx",
+        # "api_composicaoEvolucaoDeReceita.xlsx",
+        # "api_custoUnitarioPorPonderacao.xlsx",
+        # "api_demonstracaoCustoUnitarioDosServicosAuxiliares.xlsx",
+        # "api_benchmarkComposicaoDeCustos.xlsx",
+        # 'api_consumo.xlsx',
+        'api_quantidadeleito.csv',
+        # 'api_quantidadecirurgia.xlsx',
+        # 'api_notasfiscais.xlsx',
+        # 'api_folhadepagamento.xlsx',
+        # 'api_custosIndividualizadoPorCentro.xlsx',
+        # 'api_producoes.xlsx'
+    ]   
+
+    # Analisa competências e decide: processar ou copiar
+    arquivo_filtrado, resultados, modo = processar_incremental(
+        caminho_atual=caminho,
+        arquivo_competencia_atual=diretorio_arquivo_competencia,
+        nomes_arquivos_apis=arquivos_apis_para_consolidar,
+        processar_somente_fechadas=True
+    )
+
+    # ====================================================================
+    # DECISÃO: COPIAR OU PROCESSAR
+    # ====================================================================
+    if modo == 'copiar':
+        # Nenhuma competência nova - arquivos já foram copiados
+        print("\n" + "="*60)
+        print("✅ EXECUÇÃO FINALIZADA - MODO CÓPIA")
+        print("   Todos os arquivos do mês anterior foram copiados")
+        print("="*60 + "\n")
+        sys.exit(0)
+
+    # Se chegou aqui, há competências novas para processar
+    if arquivo_filtrado is None:
+        print("\n❌ Erro ao filtrar competências")
+        sys.exit(1)
+
+    # Atualiza para usar o arquivo filtrado
+    diretorio_arquivo_competencia = arquivo_filtrado
+
+    # ====================================================================
+    # PASSO 3: EXTRAIR DADOS DAS APIs
+    # ====================================================================
+    print("\n" + "="*60)
+    print("📡 PASSO 3: Extraindo dados das APIs (apenas competências novas)")
+    print("="*60)
     
     # Executar todas as APIs
     apis_para_executar = [
-        ("Consumo", api_consumo),
+        # ("Consumo", api_consumo),
         ("QuantidadeLeito", api_quantidadeLeito),
-        ("QuantidadeCirurgia", api_quantidadeCirurgia),
-        ("NotasFiscais", api_notasFiscais),
-        ("FolhadePagamento", api_folhadepagamento),
-        ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
-        ("producoes", api_producoes), 
-        ("estatistica", api_estatistica),
-        ("rankingDeCusto", api_rankingDeCusto),
-        ("evolucaoDeCustos", api_evolucaoDeCustos),
-        ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
-        ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
-        ("painelComparativoDeCustos", api_painelComparativoDeCustos),
-        ("custoPorEspecialidade", api_custoPorEspecialidade),
-        ("analisedepartamental", api_analisedepartamental),
-        ("composicaoDeCustos", api_composicaoDeCustos),
-        ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
-        ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
-        ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
-        ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos)
-        
+        # ("QuantidadeCirurgia", api_quantidadeCirurgia),
+        # ("NotasFiscais", api_notasFiscais),
+        # ("FolhadePagamento", api_folhadepagamento),
+        # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
+        # ("producoes", api_producoes), 
+        # ("estatistica", api_estatistica),
+        # ("rankingDeCusto", api_rankingDeCusto),
+        # ("evolucaoDeCustos", api_evolucaoDeCustos),
+        # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
+        # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
+        # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
+        # ("custoPorEspecialidade", api_custoPorEspecialidade),
+        # ("analisedepartamental", api_analisedepartamental),
+        # ("composicaoDeCustos", api_composicaoDeCustos),
+        # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
+        # ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
+        # ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
+        # ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos)
     ]
     
     resultados = {}
@@ -161,7 +232,18 @@ def main():
                 "sucesso": False,
                 "erro": str(e)
             }
-    
+
+    # ====================================================================
+    # PASSO 4: CONSOLIDAR DADOS (NOVOS + MÊS ANTERIOR)
+    # ====================================================================
+    consolidar_apos_extracao(
+        caminho_atual=caminho,
+        nomes_arquivos_apis=arquivos_apis_para_consolidar
+    )
+
+    # ====================================================================
+    # PASSO 5: GERAR RELATÓRIO
+    # ====================================================================
     print("\n" + "="*60)
     print("📝 GERANDO RELATÓRIO RESUMO")
     print("="*60 + "\n")
@@ -182,11 +264,11 @@ def main():
     except Exception as e:
         print(f"❌ Erro ao gerar relatório: {e}\n")
 
-    # ========================================================================
-    # UPLOAD PARA GOOGLE DRIVE - COM FILTRO
-    # ========================================================================
+    # ====================================================================
+    # PASSO 6: UPLOAD PARA GOOGLE DRIVE - COM FILTRO
+    # ====================================================================
     print("="*60)
-    print("📤 PASSO 5: Upload para Google Drive")
+    print("📤 PASSO 6: Upload para Google Drive")
     print("="*60)
     
     if arquivos_gerados:
@@ -202,26 +284,8 @@ def main():
                 print(f"📁 Diretório dos arquivos: {diretorio_com_competencia}")
                 print(f"📊 Total de arquivos para enviar: {len(arquivos_para_enviar)}\n")
                 
-                # Obtém o caminho das credenciais do .env
-                credenciais_path = os.getenv('GOOGLE_CREDENTIALS_PATH')
-                
-                # # Debug - Verifica o valor lido
-                # print(f"🔍 DEBUG - Credenciais do .env: '{credenciais_path}'")
-                
-                # if credenciais_path:
-                #     # Remove espaços em branco extras (caso existam)
-                #     credenciais_path = credenciais_path.strip()
-                    
-                #     # Converte para caminho absoluto se for relativo
-                #     if not os.path.isabs(credenciais_path):
-                #         credenciais_path = os.path.abspath(credenciais_path)
-                    
-                #     print(f"🔍 DEBUG - Caminho absoluto: '{credenciais_path}'")
-                #     print(f"🔍 DEBUG - Arquivo existe: {os.path.exists(credenciais_path)}\n")
-                # else:
-                #     print("❌ GOOGLE_CREDENTIALS_PATH não encontrado no .env\n")
-
                 folder_id = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+                
                 # Faz o upload dos arquivos FILTRADOS
                 resultados_upload = salvar_arquivos_no_drive(
                     bases=arquivos_para_enviar,
@@ -242,7 +306,9 @@ def main():
     else:
         print("⚠️ Nenhum arquivo foi gerado para fazer upload\n")
 
-    # Relatório final no console
+    # ====================================================================
+    # RELATÓRIO FINAL NO CONSOLE
+    # ====================================================================
     print("="*60)
     print("📋 RELATÓRIO FINAL - CONSOLE")
     print("="*60 + "\n")
@@ -284,6 +350,7 @@ def main():
         if caminho_txt:
             print(f"📄 Para mais detalhes, consulte o relatório em:")
             print(f"   {caminho_txt}\n")
+
 
 if __name__ == "__main__":
     try:

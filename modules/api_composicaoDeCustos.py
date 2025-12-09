@@ -6,7 +6,7 @@ def api_composicaoDeCustos(
     diretorio_arquivo_competencia, 
     caminho_to_save, 
     tracker=None, 
-    delay_entre_chamadas=0.2,
+    delay_entre_chamadas=0.2,   
     max_tentativas_403=3,
     backoff_inicial=3.0,
     agrupar_por_unidade=True,
