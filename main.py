@@ -119,26 +119,26 @@ def main():
 
     # Lista de arquivos das APIs que serão consolidadas
     arquivos_apis_para_consolidar = [
-        # "api_estatistica.xlsx",
-        # "api_rankingDeCusto.xlsx",
-        # "api_evolucaoDeCustos.xlsx",
-        # "api_demonstracaoCustoUnitario.xlsx",
-        # "api_demonstracaoCustoUnitarioPorSaida.xlsx",
-        # "api_painelComparativoDeCustos.xlsx",
-        # "api_custoPorEspecialidade.xlsx",
-        # "api_analisedepartamental.xlsx",
-        # "api_composicaoDeCustos.xlsx",
-        # "api_composicaoEvolucaoDeReceita.xlsx",
-        # "api_custoUnitarioPorPonderacao.xlsx",
-        # "api_demonstracaoCustoUnitarioDosServicosAuxiliares.xlsx",
-        # "api_benchmarkComposicaoDeCustos.xlsx",
-        # 'api_consumo.xlsx',
+        "api_estatistica.csv",
+        "api_rankingdecusto.csv",
+        "api_evolucaodecustos.csv",
+        "api_demonstracaocustounitario.csv",
+        "api_demonstracaocustounitarioporsaida.csv",
+        "api_painelcomparativodecustos.csv",
+        "api_custoporespecialidade.csv",
+        "api_analisedepartamental.csv",
+        "api_composicadecustos.csv",
+        "api_composicaoevolucaodereceita.csv",
+        "api_custoUnitarioporponderacao.csv",
+        "api_demonstracaocustounitariodosservicosauxiliares.csv",
+        "api_benchmarkcomposicaodecustos.csv",
+        'api_consumo.csv',
         'api_quantidadeleito.csv',
-        # 'api_quantidadecirurgia.xlsx',
-        # 'api_notasfiscais.xlsx',
-        # 'api_folhadepagamento.xlsx',
-        # 'api_custosIndividualizadoPorCentro.xlsx',
-        # 'api_producoes.xlsx'
+        'api_quantidadecirurgia.csv',
+        'api_notasfiscais.csv',
+        'api_folhadepagamento.csv',
+        'api_custosindividualizadoporcentro.csv',
+        'api_producoes.csv'
     ]   
 
     # Analisa competências e decide: processar ou copiar
@@ -177,26 +177,26 @@ def main():
     
     # Executar todas as APIs
     apis_para_executar = [
-        # ("Consumo", api_consumo),
+        ("Consumo", api_consumo),
         ("QuantidadeLeito", api_quantidadeLeito),
-        # ("QuantidadeCirurgia", api_quantidadeCirurgia),
-        # ("NotasFiscais", api_notasFiscais),
-        # ("FolhadePagamento", api_folhadepagamento),
-        # ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
-        # ("producoes", api_producoes), 
-        # ("estatistica", api_estatistica),
-        # ("rankingDeCusto", api_rankingDeCusto),
-        # ("evolucaoDeCustos", api_evolucaoDeCustos),
-        # ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
-        # ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
-        # ("painelComparativoDeCustos", api_painelComparativoDeCustos),
-        # ("custoPorEspecialidade", api_custoPorEspecialidade),
-        # ("analisedepartamental", api_analisedepartamental),
-        # ("composicaoDeCustos", api_composicaoDeCustos),
-        # ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
-        # ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
-        # ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
-        # ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos)
+        ("QuantidadeCirurgia", api_quantidadeCirurgia),
+        ("NotasFiscais", api_notasFiscais),
+        ("FolhadePagamento", api_folhadepagamento),
+        ("custosIndividualizadoPorCentro", api_custosIndividualizadoPorCentro),
+        ("producoes", api_producoes), 
+        ("estatistica", api_estatistica),
+        ("rankingDeCusto", api_rankingDeCusto),
+        ("evolucaoDeCustos", api_evolucaoDeCustos),
+        ("demonstracaoCustoUnitario", api_demonstracaoCustoUnitario),
+        ("demonstracaoCustoUnitarioPorSaida", api_demonstracaoCustoUnitarioPorSaida),
+        ("painelComparativoDeCustos", api_painelComparativoDeCustos),
+        ("custoPorEspecialidade", api_custoPorEspecialidade),
+        ("analisedepartamental", api_analisedepartamental),
+        ("composicaoDeCustos", api_composicaoDeCustos),
+        ("composicaoEvolucaoDeReceita", api_composicaoEvolucaoDeReceita),
+        ("custoUnitarioPorPonderacao", api_custoUnitarioPorPonderacao),
+        ("demonstracaoCustoUnitarioDosServicosAuxiliares", api_demonstracaoCustoUnitarioDosServicosAuxiliares),
+        ("benchmarkComposicaoDeCustos", api_benchmarkComposicaoDeCustos)
     ]
     
     resultados = {}

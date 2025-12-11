@@ -1,18 +1,15 @@
 """
-Módulo para análise incremental de competências com detecção de reabertura
-Analisa 2 meses anteriores para capturar competências que foram reabertas e fechadas
-"""
-"""
-Módulo para análise incremental de competências com detecção de reabertura
-Analisa 2 meses anteriores para capturar competências que foram reabertas e fechadas
+Módulo para análise incremental de competências com consolidação robusta
+Versão corrigida - Dezembro 2024
 """
 import os
 import pandas as pd
 import shutil
+import glob
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
-import glob
+
 
 class AnalisadorIncremental:
     """Gerencia a análise incremental de competências entre meses"""
@@ -123,12 +120,6 @@ class AnalisadorIncremental:
         """
         Filtra competências usando análise de 2 meses anteriores
         
-        Lógica:
-        1. Carrega competências do mês atual, mês -1 e mês -2
-        2. Identifica competências que estavam FECHADAS no mês -2
-        3. Remove competências que continuaram FECHADAS em AMBOS os meses anteriores
-        4. Mantém competências que foram REABERTAS (fechada → reaberta → fechada)
-        
         Args:
             arquivo_competencia_atual: Caminho do arquivo de competências do mês vigente
             processar_somente_fechadas: Se True, processa apenas competências fechadas
@@ -140,9 +131,7 @@ class AnalisadorIncremental:
         print("🔍 ANÁLISE INCREMENTAL COM 2 MESES ANTERIORES")
         print("="*70)
         
-        # ====================================================================
-        # PASSO 1: Carregar competências do mês atual
-        # ====================================================================
+        # Carregar competências do mês atual
         if not os.path.exists(arquivo_competencia_atual):
             print(f"❌ Arquivo não encontrado: {arquivo_competencia_atual}")
             return None
@@ -151,16 +140,12 @@ class AnalisadorIncremental:
         total_inicial = len(df_atual)
         print(f"\n📊 MÊS ATUAL: {total_inicial} competências")
         
-        # ====================================================================
-        # PASSO 2: Carregar competências dos meses anteriores
-        # ====================================================================
+        # Carregar competências dos meses anteriores
         print("\n📂 Carregando histórico...")
         df_mes_1 = self._carregar_competencias_mes(self.caminho_mes_1, "Mês -1")
         df_mes_2 = self._carregar_competencias_mes(self.caminho_mes_2, "Mês -2")
         
-        # ====================================================================
-        # PASSO 3: Filtrar competências do mês atual (opcional)
-        # ====================================================================
+        # Filtrar competências do mês atual
         if processar_somente_fechadas:
             df_atual_filtrado = df_atual[
                 (df_atual['situacao'] != 'ABERTA') & 
@@ -170,11 +155,6 @@ class AnalisadorIncremental:
             print(f"\n🔒 Filtro aplicado: apenas competências FECHADAS")
             print(f"   • Total no mês atual: {total_inicial}")
             print(f"   • Fechadas: {len(df_atual_filtrado)}")
-            
-            abertas = len(df_atual[df_atual['situacao'] == 'ABERTA'])
-            reabertas = len(df_atual[df_atual['situacao'] == 'REABERTA'])
-            print(f"   • Abertas (ignoradas): {abertas}")
-            print(f"   • Reabertas (ignoradas): {reabertas}")
         else:
             df_atual_filtrado = df_atual.copy()
             print(f"\n🔓 Sem filtro de status - processando TODAS as competências")
@@ -183,9 +163,7 @@ class AnalisadorIncremental:
             print("\n⚠️ Nenhuma competência para processar no mês atual!")
             return None
         
-        # ====================================================================
-        # PASSO 4: Se não há histórico, processa tudo
-        # ====================================================================
+        # Se não há histórico, processa tudo
         if df_mes_1 is None and df_mes_2 is None:
             print("\n⚠️ SEM HISTÓRICO - Primeira execução")
             print("   ➡️ Processando TODAS as competências disponíveis")
@@ -199,9 +177,7 @@ class AnalisadorIncremental:
             print(f"\n💾 Arquivo salvo: {caminho_filtrado}")
             return caminho_filtrado
         
-        # ====================================================================
-        # PASSO 5: Criar chave única para comparação
-        # ====================================================================
+        # Criar chave única para comparação
         print("\n🔑 Criando chaves de identificação...")
         
         df_atual_filtrado['chave'] = (
@@ -214,12 +190,9 @@ class AnalisadorIncremental:
         if df_mes_2 is not None:
             df_mes_2['chave'] = df_mes_2['nome'] + '_' + df_mes_2['competencia']
         
-        # ====================================================================
-        # PASSO 6: Identificar status nos meses anteriores
-        # ====================================================================
+        # Identificar status nos meses anteriores
         print("\n🔍 ANÁLISE DE STATUS:")
         
-        # Competências FECHADAS no mês -1
         fechadas_mes_1 = set()
         reabertas_mes_1 = set()
         if df_mes_1 is not None:
@@ -234,7 +207,6 @@ class AnalisadorIncremental:
             )
             print(f"   • Mês -1: {len(fechadas_mes_1)} fechadas | {len(reabertas_mes_1)} reabertas")
         
-        # Competências FECHADAS e REABERTAS no mês -2
         fechadas_mes_2 = set()
         reabertas_mes_2 = set()
         if df_mes_2 is not None:
@@ -249,48 +221,30 @@ class AnalisadorIncremental:
             )
             print(f"   • Mês -2: {len(fechadas_mes_2)} fechadas | {len(reabertas_mes_2)} reabertas")
         
-        # ====================================================================
-        # PASSO 7: Regra de exclusão
-        # ====================================================================
+        # Regra de exclusão
         print("\n🧮 APLICANDO REGRA DE EXCLUSÃO:")
-        print("   Remover competências que estavam FECHADAS em AMBOS os meses")
-        print("   EXCETO as que foram REABERTAS no mês -1")
         
-        # Competências que devem ser EXCLUÍDAS (estavam fechadas em ambos)
         excluir = set()
         
         if df_mes_1 is not None and df_mes_2 is not None:
-            # Tem ambos os meses: exclui apenas se estava fechada nos 2
             excluir = fechadas_mes_1 & fechadas_mes_2
             print(f"   • Fechadas em AMBOS os meses: {len(excluir)}")
-            
         elif df_mes_1 is not None:
-            # Só tem mês -1: exclui se estava fechada
             excluir = fechadas_mes_1
             print(f"   • Fechadas no mês -1: {len(excluir)}")
-            
         elif df_mes_2 is not None:
-            # Só tem mês -2: exclui se estava fechada
             excluir = fechadas_mes_2
             print(f"   • Fechadas no mês -2: {len(excluir)}")
         
-        # ====================================================================
-        # PASSO 8: Detectar competências REABERTAS e depois FECHADAS
-        # ====================================================================
+        # Detectar competências REABERTAS
         competencias_para_reprocessar = set()
         
         if df_mes_1 is not None and df_mes_2 is not None:
             chaves_atuais_fechadas = set(df_atual_filtrado['chave'])
             
-            # CENÁRIO 1: Fechada → Reaberta → Fechada
-            # Mês -2: FECHADA | Mês -1: REABERTA | Atual: FECHADA
             cenario_1 = fechadas_mes_2 & reabertas_mes_1 & chaves_atuais_fechadas
-            
-            # CENÁRIO 2: Reaberta → Fechada → Fechada
-            # Mês -2: REABERTA | Mês -1: FECHADA | Atual: FECHADA
             cenario_2 = reabertas_mes_2 & fechadas_mes_1 & chaves_atuais_fechadas
             
-            # Combina ambos os cenários
             competencias_para_reprocessar = cenario_1 | cenario_2
             
             print(f"\n🔄 COMPETÊNCIAS DETECTADAS PARA REPROCESSAMENTO:")
@@ -298,53 +252,9 @@ class AnalisadorIncremental:
             print(f"   • Cenário 2 (Reaberta → Fechada → Fechada): {len(cenario_2)}")
             print(f"   • TOTAL: {len(competencias_para_reprocessar)}")
             
-            # Remove as que precisam ser reprocessadas do conjunto de exclusão
             excluir = excluir - competencias_para_reprocessar
-            
-            if competencias_para_reprocessar:
-                print("\n   📋 Exemplos de competências que serão REPROCESSADAS:")
-                
-                # Mostra exemplos do cenário 1
-                if cenario_1:
-                    print("\n   🔹 Cenário 1 (Fechada → Reaberta → Fechada):")
-                    for i, chave in enumerate(list(cenario_1)[:3], 1):
-                        partes = chave.split('_')
-                        unidade = '_'.join(partes[:-1])
-                        competencia = partes[-1]
-                        print(f"      {i}. {unidade} - Competência: {competencia}")
-                        
-                        status_mes_2 = df_mes_2[df_mes_2['chave'] == chave]['situacao'].values
-                        status_mes_2 = status_mes_2[0] if len(status_mes_2) > 0 else 'N/A'
-                        
-                        status_mes_1 = df_mes_1[df_mes_1['chave'] == chave]['situacao'].values
-                        status_mes_1 = status_mes_1[0] if len(status_mes_1) > 0 else 'N/A'
-                        
-                        status_atual = df_atual_filtrado[df_atual_filtrado['chave'] == chave]['situacao'].values[0]
-                        
-                        print(f"         Mês -2: {status_mes_2} | Mês -1: {status_mes_1} | Atual: {status_atual}")
-                
-                # Mostra exemplos do cenário 2
-                if cenario_2:
-                    print("\n   🔹 Cenário 2 (Reaberta → Fechada → Fechada):")
-                    for i, chave in enumerate(list(cenario_2)[:3], 1):
-                        partes = chave.split('_')
-                        unidade = '_'.join(partes[:-1])
-                        competencia = partes[-1]
-                        print(f"      {i}. {unidade} - Competência: {competencia}")
-                        
-                        status_mes_2 = df_mes_2[df_mes_2['chave'] == chave]['situacao'].values
-                        status_mes_2 = status_mes_2[0] if len(status_mes_2) > 0 else 'N/A'
-                        
-                        status_mes_1 = df_mes_1[df_mes_1['chave'] == chave]['situacao'].values
-                        status_mes_1 = status_mes_1[0] if len(status_mes_1) > 0 else 'N/A'
-                        
-                        status_atual = df_atual_filtrado[df_atual_filtrado['chave'] == chave]['situacao'].values[0]
-                        
-                        print(f"         Mês -2: {status_mes_2} | Mês -1: {status_mes_1} | Atual: {status_atual}")
         
-        # ====================================================================
-        # PASSO 9: Aplicar filtro
-        # ====================================================================
+        # Aplicar filtro
         print(f"\n📊 RESUMO:")
         print(f"   • Total no mês atual (filtrado): {len(df_atual_filtrado)}")
         print(f"   • A excluir (já processadas): {len(excluir)}")
@@ -361,15 +271,10 @@ class AnalisadorIncremental:
         print(f"   • Removidas: {removidos}")
         print(f"   • ✅ RESTANTES PARA PROCESSAR: {total_final}")
         
-        # ====================================================================
-        # PASSO 10: Resultado
-        # ====================================================================
         if df_final.empty:
             print("\n⚠️ NENHUMA COMPETÊNCIA NOVA PARA PROCESSAR!")
-            print("   📋 Ação: Copiar arquivos do mês anterior")
             return None
         
-        # Salva arquivo filtrado
         nome_filtrado = "competencias_todas_unidades_filtrado.xlsx"
         caminho_filtrado = os.path.join(
             os.path.dirname(arquivo_competencia_atual), 
@@ -381,127 +286,144 @@ class AnalisadorIncremental:
         
         return caminho_filtrado
     
-    def copiar_arquivos_mes_anterior(self, nomes_arquivos_apis):
+    def _buscar_arquivo_api(self, diretorio, nome_base):
         """
-        Copia arquivos das APIs do mês -1 para o mês atual
-        """
-        print("\n" + "="*60)
-        print("📂 COPIANDO ARQUIVOS DO MÊS ANTERIOR")
-        print("="*60)
+        Busca arquivo de uma API (CSV ou XLSX) de forma robusta
         
-        if not self.caminho_mes_1:
-            print("❌ Não há mês -1 disponível")
-            return {}
-        
-        resultados = {}
-        
-        for nome_arquivo in nomes_arquivos_apis:
-            arquivo_origem = os.path.join(self.caminho_mes_1, nome_arquivo)
-            arquivo_destino = os.path.join(self.caminho_atual, nome_arquivo)
+        Args:
+            diretorio: Diretório onde buscar
+            nome_base: Nome base do arquivo (ex: 'api_estatistica')
             
-            try:
-                if not os.path.exists(arquivo_origem):
-                    print(f"⚠️ {nome_arquivo} - não encontrado no mês -1")
-                    resultados[nome_arquivo] = False
-                    continue
-                
-                shutil.copy2(arquivo_origem, arquivo_destino)
-                print(f"✅ {nome_arquivo} - copiado com sucesso")
-                resultados[nome_arquivo] = True
-                
-            except Exception as e:
-                print(f"❌ {nome_arquivo} - erro ao copiar: {e}")
-                resultados[nome_arquivo] = False
+        Returns:
+            tuple: (caminho_completo, extensao) ou (None, None)
+        """
+        # Tenta encontrar arquivo com qualquer extensão
+        for extensao in ['.csv', '.xlsx']:
+            # Padrão: api_estatistica*.csv ou api_estatistica*.xlsx
+            padrao = os.path.join(diretorio, f"{nome_base}*{extensao}")
+            arquivos = glob.glob(padrao)
+            
+            if arquivos:
+                # Retorna o primeiro encontrado
+                return arquivos[0], extensao
         
-        sucessos = sum(1 for v in resultados.values() if v)
-        total = len(resultados)
+        return None, None
+    
+    def _carregar_arquivo_api(self, caminho_arquivo, extensao):
+        """
+        Carrega arquivo CSV ou XLSX de forma robusta
         
-        print(f"\n📊 Resumo: {sucessos}/{total} arquivos copiados com sucesso")
-        
-        return resultados
+        Args:
+            caminho_arquivo: Caminho completo do arquivo
+            extensao: '.csv' ou '.xlsx'
+            
+        Returns:
+            DataFrame ou None
+        """
+        try:
+            if extensao == '.csv':
+                # Importa função robusta de leitura CSV
+                from modules.csv_reader import ler_csv_robusto
+                return ler_csv_robusto(caminho_arquivo, sep=';', encoding='utf-8-sig')
+            else:  # .xlsx
+                return pd.read_excel(caminho_arquivo)
+        except Exception as e:
+            print(f"   ❌ Erro ao carregar arquivo: {e}")
+            return None
     
     def consolidar_dados_api(self, nome_arquivo_api):
         """
         Consolida dados de uma API: novos (mês atual) + histórico (mês -1)
-        Busca arquivos que começam com o nome base da API (CSV ou XLSX)
+        VERSÃO CORRIGIDA - Busca robusta e ordem correta
+        
+        Args:
+            nome_arquivo_api: Nome base do arquivo (ex: 'api_estatistica.csv')
+            
+        Returns:
+            bool: True se consolidou com sucesso
         """
-        # Extrai nome base e extensão
-        nome_base, extensao = os.path.splitext(nome_arquivo_api)
-        extensao = extensao.lower()  # .csv ou .xlsx
+        # Remove extensão para busca
+        nome_base = nome_arquivo_api.replace('.csv', '').replace('.xlsx', '')
         
         print(f"\n🔄 Consolidando: {nome_base}")
         
         # ================================================================
-        # PASSO 1: Buscar arquivo no mês atual
+        # PASSO 1: Buscar arquivo NOVO (mês atual)
         # ================================================================
-        padrao_novo = os.path.join(self.caminho_atual, f"{nome_base}*{extensao}")
-        arquivos_novos = glob.glob(padrao_novo)
+        arquivo_novo, extensao_novo = self._buscar_arquivo_api(self.caminho_atual, nome_base)
         
-        if not arquivos_novos:
-            print(f"   ⚠️ Nenhum arquivo encontrado para: {nome_base}{extensao}")
-            print(f"   📁 Padrão de busca: {padrao_novo}")
+        if not arquivo_novo:
+            print(f"   ⚠️ Arquivo não encontrado no mês atual")
             return False
         
-        arquivo_novo = arquivos_novos[0]
-        print(f"   📄 Arquivo novo: {os.path.basename(arquivo_novo)}")
+        print(f"   📄 Novo: {os.path.basename(arquivo_novo)}")
         
         # ================================================================
-        # PASSO 2: Verificar se há mês -1
+        # PASSO 2: Carregar arquivo NOVO
+        # ================================================================
+        df_novo = self._carregar_arquivo_api(arquivo_novo, extensao_novo)
+        
+        if df_novo is None:
+            print(f"   ❌ Falha ao carregar arquivo novo")
+            return False
+        
+        print(f"   📊 Registros novos: {len(df_novo):,}")
+        
+        # ================================================================
+        # PASSO 3: Verificar se há mês -1
         # ================================================================
         if not self.caminho_mes_1:
-            print("   ✅ Sem consolidação necessária (sem mês -1)")
+            print(f"   ℹ️ Sem mês -1 - mantendo apenas dados novos")
             return True
         
         # ================================================================
-        # PASSO 3: Buscar arquivo no mês -1
+        # PASSO 4: Buscar arquivo ANTIGO (mês -1)
         # ================================================================
-        padrao_antigo = os.path.join(self.caminho_mes_1, f"{nome_base}*{extensao}")
-        arquivos_antigos = glob.glob(padrao_antigo)
+        arquivo_antigo, extensao_antigo = self._buscar_arquivo_api(self.caminho_mes_1, nome_base)
         
-        if not arquivos_antigos:
+        if not arquivo_antigo:
             print(f"   ℹ️ Arquivo não encontrado no mês -1 - mantendo apenas dados novos")
             return True
         
-        arquivo_antigo = arquivos_antigos[0]
-        print(f"   📄 Arquivo mês -1: {os.path.basename(arquivo_antigo)}")
+        print(f"   📄 Antigo: {os.path.basename(arquivo_antigo)}")
         
         # ================================================================
-        # PASSO 4: Carregar dados (CSV ou XLSX)
+        # PASSO 5: Carregar arquivo ANTIGO
+        # ================================================================
+        df_antigo = self._carregar_arquivo_api(arquivo_antigo, extensao_antigo)
+        
+        if df_antigo is None:
+            print(f"   ⚠️ Falha ao carregar arquivo antigo - mantendo apenas dados novos")
+            return True
+        
+        print(f"   📊 Registros antigos: {len(df_antigo):,}")
+        
+        # ================================================================
+        # PASSO 6: CONSOLIDAR - ORDEM CORRETA!
         # ================================================================
         try:
-            if extensao == '.csv':
-                df_novo = pd.read_csv(arquivo_novo)
-                df_antigo = pd.read_csv(arquivo_antigo)
-            else:  # .xlsx
-                df_novo = pd.read_excel(arquivo_novo)
-                df_antigo = pd.read_excel(arquivo_antigo)
-            
-            print(f"   📊 Registros novos: {len(df_novo):,}")
-            print(f"   📊 Registros antigos: {len(df_antigo):,}")
-            
-            # ================================================================
-            # PASSO 5: Consolidar
-            # ================================================================
-            df_consolidado = pd.concat([df_antigo, df_novo], ignore_index=True)
+            # IMPORTANTE: Novo primeiro, antigo depois
+            # Ao remover duplicatas com keep='first', mantém os NOVOS
+            df_consolidado = pd.concat([df_novo, df_antigo], ignore_index=True)
             
             tamanho_antes = len(df_consolidado)
-            df_consolidado = df_consolidado.drop_duplicates()
+            df_consolidado = df_consolidado.drop_duplicates(keep='first')
             duplicatas = tamanho_antes - len(df_consolidado)
             
             if duplicatas > 0:
                 print(f"   🗑️ Duplicatas removidas: {duplicatas}")
-            
+             
             print(f"   ✅ Total consolidado: {len(df_consolidado):,}")
             
             # ================================================================
-            # PASSO 6: Salvar no formato original
+            # PASSO 7: Salvar no formato ORIGINAL
             # ================================================================
-            if extensao == '.csv':
-                df_consolidado.to_csv(arquivo_novo, index=False)
+            if extensao_novo == '.csv':
+                df_consolidado.to_csv(arquivo_novo, index=False, sep=';', encoding='utf-8-sig')
             else:
                 df_consolidado.to_excel(arquivo_novo, index=False)
             
-            print(f"   💾 Arquivo consolidado salvo")
+            print(f"   💾 Arquivo consolidado salvo: {os.path.basename(arquivo_novo)}")
             
             return True
             
@@ -534,9 +456,224 @@ class AnalisadorIncremental:
         
         for arquivo, sucesso in resultados.items():
             status = "✅" if sucesso else "❌"
-            print(f"{status} {arquivo}")
+            nome_base = arquivo.replace('.csv', '').replace('.xlsx', '')
+            print(f"{status} {nome_base}")
         
         print(f"\n📊 Total: {sucessos}/{total} consolidações bem-sucedidas")
+        
+        return resultados
+    
+    def consolidar_dados_api_inteligente(self, nome_arquivo_api):
+        """
+        Consolida dados mantendo APENAS os dados MAIS RECENTES
+        Remove duplicatas mantendo dados NOVOS, descarta ANTIGOS
+        """
+        nome_base = nome_arquivo_api.replace('.csv', '').replace('.xlsx', '')
+        
+        print(f"\n🔄 Consolidando: {nome_base}")
+        
+        # Buscar arquivo NOVO (mês atual)
+        arquivo_novo, extensao_novo = self._buscar_arquivo_api(self.caminho_atual, nome_base)
+        
+        if not arquivo_novo:
+            print(f"   ⚠️ Arquivo não encontrado no mês atual")
+            return False
+        
+        print(f"   📄 Novo: {os.path.basename(arquivo_novo)}")
+        
+        # Carregar arquivo NOVO
+        df_novo = self._carregar_arquivo_api(arquivo_novo, extensao_novo)
+        
+        if df_novo is None:
+            print(f"   ❌ Falha ao carregar arquivo novo")
+            return False
+        
+        registros_novos = len(df_novo)
+        print(f"   📊 Registros novos: {registros_novos:,}")
+        
+        # Verificar se há mês -1
+        if not self.caminho_mes_1:
+            print(f"   ℹ️ Sem mês -1 - mantendo apenas dados novos")
+            return True
+        
+        # Buscar arquivo ANTIGO (mês -1)
+        arquivo_antigo, extensao_antigo = self._buscar_arquivo_api(self.caminho_mes_1, nome_base)
+        
+        if not arquivo_antigo:
+            print(f"   ℹ️ Arquivo não encontrado no mês -1 - mantendo apenas dados novos")
+            return True
+        
+        print(f"   📄 Antigo: {os.path.basename(arquivo_antigo)}")
+        
+        # Carregar arquivo ANTIGO
+        df_antigo = self._carregar_arquivo_api(arquivo_antigo, extensao_antigo)
+        
+        if df_antigo is None:
+            print(f"   ⚠️ Falha ao carregar arquivo antigo - mantendo apenas dados novos")
+            return True
+        
+        registros_antigos = len(df_antigo)
+        print(f"   📊 Registros antigos: {registros_antigos:,}")
+        
+        # Identificar colunas-chave
+        colunas_chave = self._identificar_colunas_chave(df_novo, nome_base)
+        
+        if not colunas_chave:
+            print(f"   ⚠️ Não foi possível identificar colunas-chave")
+            df_consolidado = pd.concat([df_antigo, df_novo], ignore_index=True)
+        else:
+            print(f"   🔑 Colunas-chave: {', '.join(colunas_chave[:3])}{'...' if len(colunas_chave) > 3 else ''}")
+            
+            # CRÍTICO: NOVO primeiro, ANTIGO depois
+            # drop_duplicates(keep='first') mantém dados NOVOS
+            df_consolidado = pd.concat([df_novo, df_antigo], ignore_index=True)
+            
+            tamanho_antes = len(df_consolidado)
+            df_consolidado = df_consolidado.drop_duplicates(subset=colunas_chave, keep='first')
+            
+            duplicatas_removidas = tamanho_antes - len(df_consolidado)
+            
+            if duplicatas_removidas > 0:
+                print(f"   🗑️ Duplicatas removidas: {duplicatas_removidas:,}")
+                print(f"      (Mantidos dados NOVOS, removidos ANTIGOS)")
+        
+        registros_finais = len(df_consolidado)
+        print(f"   ✅ Total consolidado: {registros_finais:,}")
+        
+        # Salvar
+        try:
+            if extensao_novo == '.csv':
+                df_consolidado.to_csv(arquivo_novo, index=False, sep=';', encoding='utf-8-sig')
+            else:
+                df_consolidado.to_excel(arquivo_novo, index=False)
+            
+            print(f"   💾 Arquivo consolidado salvo")
+            return True
+            
+        except Exception as e:
+            print(f"   ❌ Erro ao salvar: {e}")
+            return False
+
+    def _identificar_colunas_chave(self, df, nome_api):
+        """Identifica colunas-chave para remoção de duplicatas"""
+        colunas = df.columns.tolist()
+        colunas_lower = [c.lower() for c in colunas]
+        
+        # Mapeamento específico por API
+        chaves_especificas = {
+            'custosindividualizadoporcentro': ['centroDeCustoDescr', 'competenciaDescr', 'contaDescr', 'grupoContaDescr', 'tipoDescr', 'classificacaoDescr', 'unidade' ],
+            'folhadepagamento': ['contaDeCustoDescr', 'centroDeCustoDescr', 'competenciaDescr', 'nomeFuncionario', 'unidade'],
+            'notasfiscais': ['contaDeCustoDescr', 'centroDeCustoDescr', 'competenciaDescr', 'numero', 'fornecedor', 'unidade'],
+            'quantidadecirurgia': ['centroDeCustoDescr', 'competenciaDescr', 'unidade'],
+            'quantidadeleito': ['centroDeCustoDescr', 'competenciaDescr', 'unidade'],
+            'consumo': ['contaDeCustoDescr', 'centroDeCustoDescr', 'competenciaDescr', 'itemDeEstoque', 'codigoTUSS' ,'unidade'],
+            'benchmarkcomposicaodecustos': ['tipoCentroCusto', 'unidade', 'competencia'],
+            'demonstracaocustounitariodosservicosauxiliares': ['competenciaDescr', 'grupo', 'descricao', 'unidade'],
+            'custounitarioporponderacao': ['competenciaDescr', 'centroDeCustoDescr', 'criterioDeRateioDescr', 'ponderacaoDeRateioDescr', 'unidade'],
+            'composicaoevolucaodereceita': ['tipo', 'grupoDaContaDescr', 'contaDescr', 'competenciaDescr', 'unidade'],
+            'analisedepartamental': ['grupoContaDeCustoDescr', 'centroDeCustoDescr', 'competenciaDescr', 'unidade'],
+            'custoporespecialidade': ['especialidadeDescr', 'centroCustoDestinoDescr', 'centroCustoOrigenDescr', 'unidadeProducaoDescr', 'competenciaDescr', 'unidade'],
+            'painelcomparativodecustos': ['unidadeDeProducaoId', 'unidadeDeProducaoDescr', 'competencia'],
+            'evolucaodecustos': ['grupoDaContaDescr', 'contaDeCustoDescr', 'competenciaDescr', 'tipoContaDeCustoDescr', 'classificacaoDoCustoDescr', 'unidade'], 
+            'rankingdecusto': ['grupoDoCentroDescr', 'centroDeCustoDescr', 'competenciaDescr', 'unidade'],
+            'estatistica': ['grupoDoCentroDescr','centroDeCustoDescr', 'competenciaDescr', 'criterioDeRateioDescr', 'unidade'],
+            'composicaodecustos': ['grupoDaContaDescr', 'contaDeCustoDescr', 'tipoContaDeCustoDescr', 'competenciaDescr', 'tipo_composicao', 'unidade'],
+            'demonstracaocustounitarioporsaida': ['especialidadeDescr', 'competenciaDescr', 'unidade'],
+            'demonstracaocustounitario': ['centroDeCustoDescr', 'competenciaDescr', 'unidade'],
+            'producoes': ['centroDeCustoDescr', 'competenciaDescr', 'unidadeDeProducaoDescr', 'unidade'],
+        }
+        
+        # Tenta identificar a API
+        for api_key, chaves in chaves_especificas.items():
+            if api_key in nome_api.lower():
+                chaves_encontradas = []
+                for chave in chaves:
+                    if chave.lower() in colunas_lower:
+                        idx = colunas_lower.index(chave.lower())
+                        chaves_encontradas.append(colunas[idx])
+                
+                if chaves_encontradas:
+                    return chaves_encontradas
+        
+        # Fallback: busca 'competencia' + 'nome'
+        chaves_encontradas = []
+        for chave_comum in ['unidade', 'competencia', 'unidade']:
+            if chave_comum.lower() in colunas_lower:
+                idx = colunas_lower.index(chave_comum.lower())
+                chaves_encontradas.append(colunas[idx])
+        
+        return chaves_encontradas if len(chaves_encontradas) >= 2 else []
+
+    def consolidar_todas_apis_inteligente(self, nomes_arquivos_apis):
+        """Consolida múltiplas APIs mantendo dados MAIS RECENTES"""
+        print("\n" + "="*60)
+        print("📦 CONSOLIDANDO DADOS DAS APIs")
+        print("🧠 Modo: INTELIGENTE (mantém novos, remove antigos)")
+        print("="*60)
+        
+        resultados = {}
+        
+        for nome_arquivo in nomes_arquivos_apis:
+            sucesso = self.consolidar_dados_api_inteligente(nome_arquivo)
+            resultados[nome_arquivo] = sucesso
+        
+        print("\n" + "="*60)
+        print("📋 RESUMO DA CONSOLIDAÇÃO")
+        print("="*60)
+        
+        sucessos = sum(1 for v in resultados.values() if v)
+        total = len(resultados)
+        
+        for arquivo, sucesso in resultados.items():
+            status = "✅" if sucesso else "❌"
+            nome_base = arquivo.replace('.csv', '').replace('.xlsx', '')
+            print(f"{status} {nome_base}")
+        
+        print(f"\n📊 Total: {sucessos}/{total} consolidações")
+        
+        return resultados
+    
+    def copiar_arquivos_mes_anterior(self, nomes_arquivos_apis):
+        """
+        Copia arquivos das APIs do mês -1 para o mês atual
+        """
+        print("\n" + "="*60)
+        print("📂 COPIANDO ARQUIVOS DO MÊS ANTERIOR")
+        print("="*60)
+        
+        if not self.caminho_mes_1:
+            print("❌ Não há mês -1 disponível")
+            return {}
+        
+        resultados = {}
+        
+        for nome_arquivo_base in nomes_arquivos_apis:
+            nome_base = nome_arquivo_base.replace('.csv', '').replace('.xlsx', '')
+            
+            # Busca arquivo no mês -1
+            arquivo_origem, extensao = self._buscar_arquivo_api(self.caminho_mes_1, nome_base)
+            
+            if not arquivo_origem:
+                print(f"⚠️ {nome_base} - não encontrado no mês -1")
+                resultados[nome_arquivo_base] = False
+                continue
+            
+            # Destino: mantém o nome original
+            nome_arquivo_real = os.path.basename(arquivo_origem)
+            arquivo_destino = os.path.join(self.caminho_atual, nome_arquivo_real)
+            
+            try:
+                shutil.copy2(arquivo_origem, arquivo_destino)
+                print(f"✅ {nome_arquivo_real} - copiado com sucesso")
+                resultados[nome_arquivo_base] = True
+            except Exception as e:
+                print(f"❌ {nome_arquivo_real} - erro ao copiar: {e}")
+                resultados[nome_arquivo_base] = False
+        
+        sucessos = sum(1 for v in resultados.values() if v)
+        total = len(resultados)
+        
+        print(f"\n📊 Resumo: {sucessos}/{total} arquivos copiados com sucesso")
         
         return resultados
 
@@ -544,16 +681,7 @@ class AnalisadorIncremental:
 def processar_incremental(caminho_atual, arquivo_competencia_atual, nomes_arquivos_apis,
                          processar_somente_fechadas=True):
     """
-    Função principal para processamento incremental com análise de 2 meses
-    
-    Args:
-        caminho_atual: Diretório do mês vigente
-        arquivo_competencia_atual: Caminho do arquivo de competências
-        nomes_arquivos_apis: Lista de nomes dos arquivos das APIs
-        processar_somente_fechadas: Se True, processa apenas competências fechadas
-        
-    Returns:
-        tuple: (arquivo_competencia_filtrado, resultados, modo_operacao)
+    Função principal para processamento incremental
     """
     print("\n" + "="*60)
     print("🚀 INICIANDO PROCESSAMENTO INCREMENTAL")
@@ -584,10 +712,6 @@ def processar_incremental(caminho_atual, arquivo_competencia_atual, nomes_arquiv
     print("="*60)
     print("\n⚠️ Consolidação será executada após extração dos dados novos")
     
-    print("\n" + "="*60)
-    print("✅ ANÁLISE INCREMENTAL CONCLUÍDA (MODO PROCESSAMENTO)")
-    print("="*60 + "\n")
-    
     return arquivo_filtrado, {}, 'processar'
 
 
@@ -597,274 +721,13 @@ def consolidar_apos_extracao(caminho_atual, nomes_arquivos_apis):
     """
     print("\n" + "="*60)
     print("📦 CONSOLIDANDO DADOS (NOVOS + MÊS ANTERIOR)")
-    print("="*60)
+    print("="*60)   
     
     analisador = AnalisadorIncremental(caminho_atual)
-    resultados = analisador.consolidar_todas_apis(nomes_arquivos_apis)
+    resultados = analisador.consolidar_todas_apis_inteligente(nomes_arquivos_apis)
     
     print("\n" + "="*60)
     print("✅ CONSOLIDAÇÃO CONCLUÍDA")
     print("="*60 + "\n")
     
     return resultados
-
-"""
-Módulo para consolidação incremental de dados
-Consolida dados novos (mês atual) com histórico (apenas mês -1)
-"""
-import glob
-import os
-import pandas as pd
-import shutil
-from dotenv import load_dotenv
-
-
-class ConsolidadorDados:
-    """Gerencia a consolidação de dados entre mês atual e mês -1"""
-    
-    def __init__(self, caminho_atual):
-        """
-        Inicializa o consolidador
-        
-        Args:
-            caminho_atual: Caminho do diretório do mês vigente
-        """
-        self.caminho_atual = caminho_atual
-        self.caminho_mes_1 = None
-        self._obter_caminho_mes_anterior()
-    
-    def _obter_caminho_mes_anterior(self):
-        """Identifica o diretório do mês anterior"""
-        load_dotenv()
-        caminho_fixo = os.getenv("caminho_fixo")
-        
-        if not caminho_fixo:
-            print("❌ Variável 'caminho_fixo' não encontrada no .env")
-            return
-        
-        # Extrai informações do caminho atual
-        partes = self.caminho_atual.split(os.sep)
-        pasta_competencia = partes[-1]  # Ex: "11_2024"
-        
-        try:
-            mes_atual, ano_atual = pasta_competencia.split('_')
-            mes_atual = int(mes_atual)
-            ano_atual = int(ano_atual)
-        except ValueError:
-            print(f"❌ Formato inválido da pasta: {pasta_competencia}")
-            return
-        
-        # Calcula mês -1
-        if mes_atual == 1:
-            mes_1 = 12
-            ano_1 = ano_atual - 1
-        else:
-            mes_1 = mes_atual - 1
-            ano_1 = ano_atual
-        
-        pasta_mes_1 = f"{mes_1:02d}_{ano_1}"
-        self.caminho_mes_1 = os.path.join(caminho_fixo, str(ano_1), pasta_mes_1)
-        
-        if os.path.exists(self.caminho_mes_1):
-            print(f"✅ Mês -1 encontrado: {pasta_mes_1}")
-        else:
-            print(f"⚠️ Mês -1 NÃO encontrado: {pasta_mes_1}")
-            self.caminho_mes_1 = None
-    
-    def encontrar_arquivo(self, caminho, nome_base):
-        """
-        Busca arquivo que comece com o nome base
-        
-        Args:
-            caminho: Diretório onde buscar
-            nome_base: Nome base do arquivo (sem extensão)
-            
-        Returns:
-            Caminho completo do arquivo ou None
-        """
-        padrao = os.path.join(caminho, f"{nome_base}*.xlsx")
-        arquivos = glob.glob(padrao)
-        
-        if arquivos:
-            return arquivos[0]  # Retorna o primeiro encontrado
-        return None
-    
-    def consolidar_api(self, nome_arquivo_api):
-        """
-        Consolida dados de uma API: novos (mês atual) + histórico (mês -1)
-        
-        Args:
-            nome_arquivo_api: Nome base do arquivo (ex: 'api_estatistica.xlsx')
-            
-        Returns:
-            bool: True se consolidou com sucesso
-        """
-        nome_base = nome_arquivo_api.replace('.xlsx', '')
-        print(f"\n🔄 Consolidando: {nome_base}")
-        
-        # ================================================================
-        # PASSO 1: Buscar arquivo novo (mês atual)
-        # ================================================================
-        arquivo_novo = self.encontrar_arquivo(self.caminho_atual, nome_base)
-        
-        if not arquivo_novo:
-            print(f"   ⚠️ Arquivo não encontrado no mês atual")
-            return False
-        
-        print(f"   📄 Novo: {os.path.basename(arquivo_novo)}")
-        
-        # ================================================================
-        # PASSO 2: Verificar se há mês -1
-        # ================================================================
-        if not self.caminho_mes_1:
-            print(f"   ℹ️ Sem mês -1 - mantendo apenas dados novos")
-            return True
-        
-        # ================================================================
-        # PASSO 3: Buscar arquivo antigo (mês -1)
-        # ================================================================
-        arquivo_antigo = self.encontrar_arquivo(self.caminho_mes_1, nome_base)
-        
-        if not arquivo_antigo:
-            print(f"   ℹ️ Arquivo não encontrado no mês -1 - mantendo apenas dados novos")
-            return True
-        
-        print(f"   📄 Antigo: {os.path.basename(arquivo_antigo)}")
-        
-        # ================================================================
-        # PASSO 4: Carregar e consolidar
-        # ================================================================
-        try:
-            df_novo = pd.read_excel(arquivo_novo)
-            df_antigo = pd.read_excel(arquivo_antigo)
-            
-            print(f"   📊 Registros novos: {len(df_novo):,}")
-            print(f"   📊 Registros antigos: {len(df_antigo):,}")
-            
-            # Concatena: antigo primeiro, depois novo
-            df_consolidado = pd.concat([df_antigo, df_novo], ignore_index=True)
-            
-            # Remove duplicatas
-            tamanho_antes = len(df_consolidado)
-            df_consolidado = df_consolidado.drop_duplicates()
-            duplicatas = tamanho_antes - len(df_consolidado)
-            
-            if duplicatas > 0:
-                print(f"   🗑️ Duplicatas removidas: {duplicatas}")
-            
-            print(f"   ✅ Total consolidado: {len(df_consolidado):,}")
-            
-            # Salva consolidado no arquivo novo
-            df_consolidado.to_excel(arquivo_novo, index=False)
-            print(f"   💾 Arquivo salvo: {os.path.basename(arquivo_novo)}")
-            
-            return True
-            
-        except Exception as e:
-            print(f"   ❌ Erro ao consolidar: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-    
-    def consolidar_multiplas_apis(self, nomes_arquivos_apis):
-        """
-        Consolida dados de múltiplas APIs
-        
-        Args:
-            nomes_arquivos_apis: Lista de nomes base dos arquivos
-            
-        Returns:
-            dict: Resultados da consolidação
-        """
-        print("\n" + "="*70)
-        print("📦 CONSOLIDANDO DADOS (NOVOS + MÊS ANTERIOR)")
-        print("="*70)
-        
-        resultados = {}
-        
-        for nome_arquivo in nomes_arquivos_apis:
-            sucesso = self.consolidar_api(nome_arquivo)
-            resultados[nome_arquivo] = sucesso
-        
-        # Resumo
-        print("\n" + "="*70)
-        print("📋 RESUMO DA CONSOLIDAÇÃO")
-        print("="*70)
-        
-        sucessos = sum(1 for v in resultados.values() if v)
-        total = len(resultados)
-        
-        for arquivo, sucesso in resultados.items():
-            status = "✅" if sucesso else "❌"
-            nome_base = arquivo.replace('.xlsx', '')
-            print(f"{status} {nome_base}")
-        
-        print(f"\n📊 Total: {sucessos}/{total} consolidações bem-sucedidas")
-        print("="*70 + "\n")
-        
-        return resultados
-    
-    def copiar_arquivo_mes_anterior(self, nome_arquivo_api):
-        """
-        Copia arquivo do mês -1 para o mês atual (modo cópia)
-        
-        Args:
-            nome_arquivo_api: Nome base do arquivo
-            
-        Returns:
-            bool: True se copiou com sucesso
-        """
-        if not self.caminho_mes_1:
-            return False
-        
-        nome_base = nome_arquivo_api.replace('.xlsx', '')
-        
-        # Busca no mês -1
-        arquivo_origem = self.encontrar_arquivo(self.caminho_mes_1, nome_base)
-        
-        if not arquivo_origem:
-            print(f"⚠️ {nome_base} - não encontrado no mês -1")
-            return False
-        
-        # Destino mantém o mesmo nome
-        nome_arquivo_real = os.path.basename(arquivo_origem)
-        arquivo_destino = os.path.join(self.caminho_atual, nome_arquivo_real)
-        
-        try:
-            shutil.copy2(arquivo_origem, arquivo_destino)
-            print(f"✅ {nome_arquivo_real} - copiado")
-            return True
-        except Exception as e:
-            print(f"❌ {nome_arquivo_real} - erro: {e}")
-            return False
-    
-    def copiar_multiplos_arquivos(self, nomes_arquivos_apis):
-        """
-        Copia múltiplos arquivos do mês -1
-        
-        Args:
-            nomes_arquivos_apis: Lista de nomes base
-            
-        Returns:
-            dict: Resultados das cópias
-        """
-        print("\n" + "="*60)
-        print("📂 COPIANDO ARQUIVOS DO MÊS ANTERIOR")
-        print("="*60)
-        
-        if not self.caminho_mes_1:
-            print("❌ Não há mês -1 disponível")
-            return {}
-        
-        resultados = {}
-        
-        for nome_arquivo in nomes_arquivos_apis:
-            sucesso = self.copiar_arquivo_mes_anterior(nome_arquivo)
-            resultados[nome_arquivo] = sucesso
-        
-        sucessos = sum(1 for v in resultados.values() if v)
-        total = len(resultados)
-        
-        print(f"\n📊 Resumo: {sucessos}/{total} arquivos copiados")
-        
-        return resultados

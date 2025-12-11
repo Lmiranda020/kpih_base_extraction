@@ -113,14 +113,54 @@ def carregar_de_para_unidades():
         # Lê o arquivo Excel com engine openpyxl para melhor suporte a encoding
         df_unidades = pd.read_excel(
             caminho_arquivo,
-            engine='openpyxl'  # Engine que lida melhor com caracteres especiais
+            engine='openpyxl'
         )
         
-        # Garante que todas as colunas de texto estejam em UTF-8
+        # Função para corrigir encoding corrompido
+        def corrigir_encoding(texto):
+            if not isinstance(texto, str):
+                return texto
+            
+            # Lista de padrões de encoding corrompido
+            padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
+            
+            # Se não tem padrões problemáticos, retorna como está (já está correto!)
+            if not any(padrao in texto for padrao in padroes_corrompidos):
+                return texto
+            
+            # Tenta diferentes estratégias de correção
+            try:
+                # Estratégia 1: UTF-8 mal interpretado como Latin-1
+                corrigido = texto.encode('latin-1').decode('utf-8')
+                # Valida se a correção melhorou (não deve ter Ã depois da correção)
+                if not any(padrao in corrigido for padrao in padroes_corrompidos):
+                    return corrigido
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                pass
+            
+            try:
+                # Estratégia 2: CP1252 (Windows) mal interpretado
+                corrigido = texto.encode('cp1252').decode('utf-8')
+                if not any(padrao in corrigido for padrao in padroes_corrompidos):
+                    return corrigido
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                pass
+            
+            try:
+                # Estratégia 3: ISO-8859-1
+                corrigido = texto.encode('iso-8859-1').decode('utf-8')
+                if not any(padrao in corrigido for padrao in padroes_corrompidos):
+                    return corrigido
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                pass
+            
+            # Se chegou aqui, nenhuma estratégia funcionou - retorna original
+            print(f"   ⚠️ Não foi possível corrigir: {texto[:60]}...")
+            return texto
+        
+        # Aplica correção em todas as colunas de texto
         for col in df_unidades.select_dtypes(include=['object']).columns:
-            df_unidades[col] = df_unidades[col].apply(
-                lambda x: x.encode('latin-1').decode('utf-8') if isinstance(x, str) and 'Ã' in x else x
-            )
+            df_unidades[col] = df_unidades[col].apply(corrigir_encoding)
         
         print(f"✅ Arquivo DE-PARA carregado: {len(df_unidades)} unidades")
         print(f"   Colunas disponíveis: {', '.join(df_unidades.columns.tolist())}")
@@ -128,9 +168,20 @@ def carregar_de_para_unidades():
         # Mostra exemplos de nomes para validar encoding
         if 'unidade' in df_unidades.columns or 'nome' in df_unidades.columns:
             col_exemplo = 'unidade' if 'unidade' in df_unidades.columns else 'nome'
-            print(f"   Exemplos de nomes (primeiros 3):")
-            for nome in df_unidades[col_exemplo].head(3):
+            print(f"   Exemplos de nomes (primeiros 5):")
+            for nome in df_unidades[col_exemplo].head(5):
                 print(f"      - {nome}")
+            
+            # Verifica se ainda existem problemas de encoding
+            padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
+            problemas = df_unidades[col_exemplo].apply(
+                lambda x: any(padrao in str(x) for padrao in padroes_corrompidos) if pd.notna(x) else False
+            ).sum()
+            
+            if problemas > 0:
+                print(f"   ⚠️ {problemas} registro(s) ainda com possíveis problemas de encoding")
+            else:
+                print(f"   ✅ Nenhum problema de encoding detectado")
         
         return df_unidades
         
@@ -687,9 +738,26 @@ def extrair_dados_api(
             df_final['competencia'] = df_final['competencia'].apply(padronizar_competencia)
             print(f"✅ Competências padronizadas para formato MM/YYYY")
 
+        # excluir colunas desnecessárias
+        colunas_para_excluir = ['NomeCompletoUnidade', 'competencia']
+        apis_que_precisam_manter_competencia = ['benchmarkcomposicaodecustos', 'painelcomparativodecustos']
+        for coluna in colunas_para_excluir:
+            if coluna in df_final.columns:
+                if coluna == 'competencia' and nome_api.lower() in apis_que_precisam_manter_competencia:
+                    continue    
+                df_final = df_final.drop(columns=[coluna])
+
         # Define nome e caminho do arquivo
         nome_arquivo = f"api_{nome_api.lower()}_{mes_e_ano}.csv"
         caminho_arquivo = os.path.join(caminho_to_save, nome_arquivo)
+
+        # Normaliza encoding de todas as colunas texto
+        #x não é a coluna inteira, mas sim cada valor individual (cada célula) dentro daquela coluna
+        print(f"🔄 Normalizando encoding dos dados...")
+        for col in df_final.select_dtypes(include=['object']).columns:
+            df_final[col] = df_final[col].apply(
+                lambda x: x.encode('utf-8', errors='ignore').decode('utf-8') if isinstance(x, str) else x
+            )
 
         # Salva o arquivo
         df_final.to_csv(caminho_arquivo, index=False, sep=';', encoding='utf-8-sig')
