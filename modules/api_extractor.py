@@ -118,43 +118,43 @@ def carregar_de_para_unidades():
         
         # Função para corrigir encoding corrompido
         def corrigir_encoding(texto):
+            """Corrige encoding corrompido APENAS quando necessário"""
             if not isinstance(texto, str):
                 return texto
             
             # Lista de padrões de encoding corrompido
             padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
             
-            # Se não tem padrões problemáticos, retorna como está (já está correto!)
+            # ✅ Se não tem padrões problemáticos, retorna IMEDIATAMENTE
             if not any(padrao in texto for padrao in padroes_corrompidos):
                 return texto
             
-            # Tenta diferentes estratégias de correção
+            # 🔧 Só chega aqui se realmente tiver problemas de encoding
+            # Estratégia 1: UTF-8 mal interpretado como Latin-1
             try:
-                # Estratégia 1: UTF-8 mal interpretado como Latin-1
                 corrigido = texto.encode('latin-1').decode('utf-8')
-                # Valida se a correção melhorou (não deve ter Ã depois da correção)
                 if not any(padrao in corrigido for padrao in padroes_corrompidos):
                     return corrigido
             except (UnicodeDecodeError, UnicodeEncodeError):
                 pass
             
+            # Estratégia 2: CP1252 (Windows)
             try:
-                # Estratégia 2: CP1252 (Windows) mal interpretado
                 corrigido = texto.encode('cp1252').decode('utf-8')
                 if not any(padrao in corrigido for padrao in padroes_corrompidos):
                     return corrigido
             except (UnicodeDecodeError, UnicodeEncodeError):
                 pass
             
+            # Estratégia 3: ISO-8859-1
             try:
-                # Estratégia 3: ISO-8859-1
                 corrigido = texto.encode('iso-8859-1').decode('utf-8')
                 if not any(padrao in corrigido for padrao in padroes_corrompidos):
                     return corrigido
             except (UnicodeDecodeError, UnicodeEncodeError):
                 pass
             
-            # Se chegou aqui, nenhuma estratégia funcionou - retorna original
+            # Se nenhuma estratégia funcionou, retorna original
             print(f"   ⚠️ Não foi possível corrigir: {texto[:60]}...")
             return texto
         
