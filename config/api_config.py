@@ -344,7 +344,7 @@ APIS_CONFIG = {
     },
     "benchmarkComposicaoDeCustos": { 
         "env_var": "url_benchmarkComposicaoDeCustos",
-        "payload_func": payload_demonstracaoCustoUnitarioDosServicosAuxiliares,
+        "payload_func": payload_benchmarkComposicaoDeCustos,
         "processar_func": None,
         "timeout": 60
     }
