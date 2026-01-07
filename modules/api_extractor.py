@@ -210,7 +210,7 @@ def aplicar_de_para_unidades(df_final, coluna_unidade='unidade'):
         return df_final
     
     # Identifica a coluna de nome da unidade no arquivo DE-PARA
-    colunas_possiveis = ['unidade', 'nome', 'nome_unidade', 'Unidade', 'Nome']
+    colunas_possiveis = ['unidade', 'nome', 'nome_unidade', 'Unidade', 'Nome', 'NomeCompletoUnidade']
     coluna_merge = None
     
     for col in colunas_possiveis:
@@ -746,6 +746,10 @@ def extrair_dados_api(
                 if coluna == 'competencia' and nome_api.lower() in apis_que_precisam_manter_competencia:
                     continue    
                 df_final = df_final.drop(columns=[coluna])
+
+        # excluir as duas ultimas colunas se o nome for Unidade e Competencia
+        if df_final.columns[-1].lower() == 'competencia' and df_final.columns[-2].lower() == 'Unidade':
+            df_final = df_final.iloc[:, :-2]
 
         # Define nome e caminho do arquivo
         nome_arquivo = f"api_{nome_api.lower()}_{mes_e_ano}.csv"

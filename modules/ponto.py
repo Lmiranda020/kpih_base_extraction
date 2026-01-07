@@ -463,10 +463,11 @@ class AnalisadorIncremental:
         
         return resultados
     
-    def consolidar_dados_api_inteligente(self, nome_arquivo_api):
+    def consolidar_dados_api_inteligente(self, nome_arquivo_api, competencias_reprocessadas=None):
         """
-        Consolida dados mantendo APENAS os dados MAIS RECENTES
-        Remove duplicatas mantendo dados NOVOS, descarta ANTIGOS
+        Args:
+            competencias_reprocessadas: Lista de competências que foram reprocessadas
+                                    Ex: ['09/2024', '10/2024']
         """
         nome_base = nome_arquivo_api.replace('.csv', '').replace('.xlsx', '')
         
@@ -524,18 +525,29 @@ class AnalisadorIncremental:
         else:
             print(f"   🔑 Colunas-chave: {', '.join(colunas_chave[:3])}{'...' if len(colunas_chave) > 3 else ''}")
             
-            # CRÍTICO: NOVO primeiro, ANTIGO depois
-            # drop_duplicates(keep='first') mantém dados NOVOS
+            # ✅ NOVA LÓGICA: Filtra base antiga ANTES de consolidar
+            if competencias_reprocessadas and 'competencia' in df_antigo.columns:
+                registros_antes = len(df_antigo)
+                
+                # Cria chave composta no DataFrame antigo
+                chaves_antigas = set(zip(df_antigo['competencia'], df_antigo['unidade']))
+                
+                # Filtra removendo as chaves que foram reprocessadas
+                mascara = df_antigo.apply(
+                    lambda row: (row['competencia'], row['unidade']) not in competencias_reprocessadas,
+                    axis=1
+                )
+                df_antigo = df_antigo[mascara]
+                
+                registros_removidos = registros_antes - len(df_antigo)
+                
+                if registros_removidos > 0:
+                    print(f"   🗑️ Removidos {registros_removidos:,} registros de competências reprocessadas:")
+                    for comp in competencias_reprocessadas:
+                        print(f"      • {comp}")
+
+
             df_consolidado = pd.concat([df_novo, df_antigo], ignore_index=True)
-            
-            tamanho_antes = len(df_consolidado)
-            df_consolidado = df_consolidado.drop_duplicates(subset=colunas_chave, keep='first')
-            
-            duplicatas_removidas = tamanho_antes - len(df_consolidado)
-            
-            if duplicatas_removidas > 0:
-                print(f"   🗑️ Duplicatas removidas: {duplicatas_removidas:,}")
-                print(f"      (Mantidos dados NOVOS, removidos ANTIGOS)")
         
         registros_finais = len(df_consolidado)
         print(f"   ✅ Total consolidado: {registros_finais:,}")
@@ -710,24 +722,44 @@ def processar_incremental(caminho_atual, arquivo_competencia_atual, nomes_arquiv
     print("\n" + "="*60)
     print("📋 MODO: PROCESSAMENTO (há novas competências)")
     print("="*60)
+    
+    # Identifica competências que serão reprocessadas
+    df_filtrado = pd.read_excel(arquivo_filtrado)
+    competencias_reprocessadas = set(
+    zip(df_filtrado['competencia'], df_filtrado['nome'])
+)
+    
+    print(f"\n📋 Competências/Unidades que serão reprocessadas:")
+    for comp, unid in list(competencias_reprocessadas)[:10]:
+        print(f"   • {comp} - {unid}")
+    if len(competencias_reprocessadas) > 10:
+        print(f"   ... e mais {len(competencias_reprocessadas) - 10}")
+    
     print("\n⚠️ Consolidação será executada após extração dos dados novos")
     
-    return arquivo_filtrado, {}, 'processar'
+    # Retorna para usar na consolidação depois
+    return arquivo_filtrado, competencias_reprocessadas, 'processar'
 
 
-def consolidar_apos_extracao(caminho_atual, nomes_arquivos_apis):
+def consolidar_apos_extracao(caminho_atual, nomes_arquivos_apis, competencias_reprocessadas=None):
     """
-    Consolida dados das APIs após a extração
+    Args:
+        competencias_reprocessadas: Lista de competências que foram extraídas novamente
     """
+    analisador = AnalisadorIncremental(caminho_atual)
     print("\n" + "="*60)
     print("📦 CONSOLIDANDO DADOS (NOVOS + MÊS ANTERIOR)")
     print("="*60)   
     
-    analisador = AnalisadorIncremental(caminho_atual)
-    resultados = analisador.consolidar_todas_apis_inteligente(nomes_arquivos_apis)
-    
+    resultados = {}
+    for nome_arquivo in nomes_arquivos_apis:
+        sucesso = analisador.consolidar_dados_api_inteligente(
+            nome_arquivo, 
+            competencias_reprocessadas=competencias_reprocessadas
+        )
+        resultados[nome_arquivo] = sucesso
     print("\n" + "="*60)
     print("✅ CONSOLIDAÇÃO CONCLUÍDA")
     print("="*60 + "\n")
-    
+        
     return resultados

@@ -41,10 +41,10 @@ def filtrar_arquivos_para_upload(arquivos_gerados):
         Lista com arquivos filtrados
     """
     padroes_incluir = [
-        'api_benchmarkComposicaoDeCustos', 
-        'api_evolucaoDeCustos', 
-        'api_rankingDeCusto', 
-        'api_demonstracaoCustoUnitarioDosServicosAuxiliares'
+        'api_benchmarkcomposicaodecustos', 
+        'api_evolucaodecustos', 
+        'api_rankingdecusto', 
+        'api_demonstracaocustounitariodosservicosauxiliares'
     ]
     
     arquivos_filtrados = []
@@ -127,7 +127,7 @@ def main():
         "api_painelcomparativodecustos.csv",
         "api_custoporespecialidade.csv",
         "api_analisedepartamental.csv",
-        "api_composicadecustos.csv",
+        "api_composicaodecustos.csv",
         "api_composicaoevolucaodereceita.csv",
         "api_custoUnitarioporponderacao.csv",
         "api_demonstracaocustounitariodosservicosauxiliares.csv",
@@ -247,6 +247,9 @@ def main():
     print("\n" + "="*60)
     print("📝 GERANDO RELATÓRIO RESUMO")
     print("="*60 + "\n")
+
+    caminho_csv = None 
+    caminho_txt = None
     
     try:
         caminho_csv, caminho_txt = tracker.gerar_relatorio(caminho)
@@ -254,13 +257,10 @@ def main():
         if caminho_csv and caminho_txt:
             print(f"✅ Relatório CSV gerado: {caminho_csv}")
             print(f"✅ Relatório TXT gerado: {caminho_txt}\n")
-
             arquivos_gerados.append(os.path.basename(caminho_csv))
             arquivos_gerados.append(os.path.basename(caminho_txt))
-                                    
         else:
             print("⚠️ Não foi possível gerar relatórios\n")
-            
     except Exception as e:
         print(f"❌ Erro ao gerar relatório: {e}\n")
 
@@ -346,7 +346,6 @@ def main():
     print("="*60 + "\n")
     
     if resumo.get('endpoints'):
-        caminho_txt = tracker.gerar_relatorio(caminho)[1]
         if caminho_txt:
             print(f"📄 Para mais detalhes, consulte o relatório em:")
             print(f"   {caminho_txt}\n")
