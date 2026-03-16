@@ -123,7 +123,7 @@ def carregar_de_para_unidades():
                 return texto
             
             # Lista de padrões de encoding corrompido
-            padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
+            padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
             
             # ✅ Se não tem padrões problemáticos, retorna IMEDIATAMENTE
             if not any(padrao in texto for padrao in padroes_corrompidos):
@@ -173,7 +173,7 @@ def carregar_de_para_unidades():
                 print(f"      - {nome}")
             
             # Verifica se ainda existem problemas de encoding
-            padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
+            padroes_corrompidos = ['Ã§', 'Ã£', 'Ã©', 'Ã­', 'Ã³', 'Ãº', 'Ã¡', 'Ã¢', 'Ãª', 'Ã´']
             problemas = df_unidades[col_exemplo].apply(
                 lambda x: any(padrao in str(x) for padrao in padroes_corrompidos) if pd.notna(x) else False
             ).sum()
