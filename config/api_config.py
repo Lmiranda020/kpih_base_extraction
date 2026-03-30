@@ -2,6 +2,66 @@
 Configurações de todas as APIs
 Cada API define seu próprio payload e processamento
 """
+
+def processar_demonstracaoCustoUnitarioDosServicosAuxiliares(dados, unidade):
+    import pandas as pd
+
+    if not dados:
+        return None
+
+    if isinstance(dados, dict):
+        items = dados.get('items', None)
+        if items is None:
+            items = next((v for v in dados.values() if isinstance(v, list)), [])
+        dados = items
+
+    df = pd.DataFrame(dados)
+
+    if df.empty:
+        return None
+
+    if 'media' in df.columns:
+        df['media'] = pd.to_numeric(df['media'], errors='coerce').round(0).astype('Int64')
+
+    df['unidade']     = unidade['nome']
+    df['competencia'] = unidade['competencia']
+
+    return df
+
+
+def processar_benchmarkComposicaoDeCustos(dados, unidade):
+    import pandas as pd
+
+    if not dados:
+        return None
+
+    if isinstance(dados, dict):
+        items = dados.get('items', None)
+        if items is None:
+            items = next((v for v in dados.values() if isinstance(v, list)), [])
+        dados = items
+
+    df = pd.DataFrame(dados)
+
+    if df.empty:
+        return None
+
+    colunas_valor = ['valorMedia', 'valorTotal']
+    colunas_perc  = ['valorPerc']
+
+    for col in colunas_valor:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').round(0).astype('Int64')
+
+    for col in colunas_perc:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').round(1)
+
+    df['unidade']     = unidade['nome']
+    df['competencia'] = unidade['competencia']
+
+    return df
+
 def processar_composicaoDeCustos(dados, unidade):
     """
     Processa resposta da API de Composição de Custos
@@ -212,7 +272,7 @@ def payload_benchmarkComposicaoDeCustos(unidade):
     return {
         "competenciaInicial": unidade['competencia'],
         "competenciaFinal": unidade['competencia'],
-        "agrupamento": "GRUPO_DE_CONTA",
+        "agrupamento": "TIPO_CENTRO_DE_CUSTO",
         "tipoValor": "ACUMULADO",
         "exibeValorAbsoluto": True,
         "custoComDepreciacao": True,
@@ -339,13 +399,13 @@ APIS_CONFIG = {
     "demonstracaoCustoUnitarioDosServicosAuxiliares": { 
         "env_var": "url_demonstracaoCustoUnitarioDosServicosAuxiliares",
         "payload_func": payload_demonstracaoCustoUnitarioDosServicosAuxiliares,
-        "processar_func": None,
+        "processar_func": processar_demonstracaoCustoUnitarioDosServicosAuxiliares,
         "timeout": 60
     },
     "benchmarkComposicaoDeCustos": { 
         "env_var": "url_benchmarkComposicaoDeCustos",
         "payload_func": payload_benchmarkComposicaoDeCustos,
-        "processar_func": None,
+        "processar_func": processar_benchmarkComposicaoDeCustos,
         "timeout": 60
     }
 }
