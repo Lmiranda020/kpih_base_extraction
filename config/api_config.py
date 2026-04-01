@@ -21,7 +21,7 @@ def processar_demonstracaoCustoUnitarioDosServicosAuxiliares(dados, unidade):
         return None
 
     if 'media' in df.columns:
-        df['media'] = pd.to_numeric(df['media'], errors='coerce').round(0).astype('Int64')
+        df['media'] = pd.to_numeric(df['media'], errors='coerce').round(2)
 
     df['unidade']     = unidade['nome']
     df['competencia'] = unidade['competencia']
