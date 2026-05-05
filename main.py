@@ -31,6 +31,8 @@ from dotenv import load_dotenv
 from datetime import datetime
 import sys
 import os
+from modules.log_historico import LogHistorico
+from modules.enviar_email_extracao import enviar_email_extracao
 
 
 # Pasta raiz do projeto (onde este main.py está)
@@ -79,13 +81,13 @@ def main():
     # Setup inicial
     load_dotenv()
     print("✅ Variáveis de ambiente carregadas\n")
-    print("🔐 Verificando conexão VPN...")
-    try:
-        conectar_vpn()
-        print("✅ VPN conectada\n")
-    except Exception as e:
-        print(f"❌ Erro ao conectar VPN: {e}")
-        sys.exit(1)
+    # print("🔐 Verificando conexão VPN...")
+    # try:
+    #     conectar_vpn()
+    #     print("✅ VPN conectada\n")
+    # except Exception as e:
+    #     print(f"❌ Erro ao conectar VPN: {e}")
+    #     sys.exit(1)
 
     try:
         caminho = to_save()
@@ -146,6 +148,7 @@ def main():
         'api_custosindividualizadoporcentro.csv',
         'api_producoes.csv'
     ]
+    arquivos_apis_para_consolidar = []
 
     arquivo_filtrado, resultados_inc, modo = processar_incremental(
         caminho_atual=caminho,
@@ -154,6 +157,18 @@ def main():
         processar_somente_fechadas=True
     )
 
+    # Extrai lista legível de competências para o e-mail
+    competencias_novas = []
+    if arquivo_filtrado and os.path.exists(arquivo_filtrado):
+        try:
+            import pandas as pd
+            df_filtrado_email = pd.read_excel(arquivo_filtrado)
+            if 'competencia' in df_filtrado_email.columns:
+                competencias_novas = sorted(
+                    df_filtrado_email['competencia'].dropna().unique().tolist()
+                )
+        except Exception as e:
+            print(f"⚠️ Não foi possível ler competências para o e-mail: {e}")
     # =========================================================================
     # DECISÃO: COPIAR OU PROCESSAR
     # =========================================================================
@@ -163,19 +178,13 @@ def main():
         print("   Todos os arquivos do mês anterior foram copiados")
         print("=" * 60 + "\n")
 
-        log_historico.fechar_execucao(
+        resumo_copia = log_historico.fechar_execucao(
             resultados={},
             observacoes="Modo cópia — nenhuma competência nova para processar"
         )
+        resumo_copia["modo"] = "copiar"   # garante que o e-mail use o template simplificado
+        enviar_email_extracao(resumo_copia)
         sys.exit(0)
-
-    if arquivo_filtrado is None:
-        print("\n❌ Erro ao filtrar competências")
-        log_historico.fechar_execucao(
-            resultados={},
-            observacoes="Erro ao filtrar competências"
-        )
-        sys.exit(1)
 
     diretorio_arquivo_competencia = arquivo_filtrado
 
@@ -385,13 +394,18 @@ def main():
         print(f"   {caminho_txt}\n")
 
     # =========================================================================
-    # Fechar log histórico ← sempre executado, mesmo em erros parciais
+    # Fechar log histórico e enviar e-mail de resultado
     # =========================================================================
-    log_historico.fechar_execucao(
+    resumo_final = log_historico.fechar_execucao(
         resultados=resultados,
         total_registros=resumo_tracker.get('total_registros', 0),
         observacoes=""
     )
+
+    # Injeta as competências processadas (extraídas do arquivo filtrado)
+    resumo_final["competencias_processadas"] = competencias_novas
+
+    enviar_email_extracao(resumo_final)
 
 
 if __name__ == "__main__":

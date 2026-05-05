@@ -18,6 +18,9 @@ def to_save():
         mes_anterior = mes - 1
         ano_anterior = ano
 
+    # mes_anterior = 2
+    # ano_anterior = 2026
+
     # Garante o mês com dois dígitos (01, 02, ..., 12)
     pasta_mes_e_ano = f"{mes_anterior:02d}_{ano_anterior}"
 

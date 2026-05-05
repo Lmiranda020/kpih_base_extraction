@@ -26,6 +26,9 @@ def processar_demonstracaoCustoUnitarioDosServicosAuxiliares(dados, unidade):
     df['unidade']     = unidade['nome']
     df['competencia'] = unidade['competencia']
 
+    # replace de . por ,
+    df['media'] = df['media'].astype(str).str.replace('.', ',', regex=False)
+
     return df
 
 
