@@ -2,24 +2,30 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
-def to_save():
-    
+def to_save(mes_ano=None):
+    """
+    Define (e cria) a pasta de saída da execução.
+
+    Args:
+        mes_ano: Competência da pasta no formato "MM_YYYY" (ex: "09_2026").
+                 Se None, usa o mês anterior à data de hoje (comportamento padrão).
+    """
     caminho = os.getenv("caminho_fixo")
 
-    data_execucao = datetime.today()
-    mes = data_execucao.month
-    ano = data_execucao.year
-
-    # Corrige o caso de janeiro (volta pra dezembro do ano anterior)
-    if mes == 1:
-        mes_anterior = 12
-        ano_anterior = ano - 1
+    if mes_ano:
+        mes_anterior, ano_anterior = (int(p) for p in mes_ano.split('_'))
     else:
-        mes_anterior = mes - 1
-        ano_anterior = ano
+        data_execucao = datetime.today()
+        mes = data_execucao.month
+        ano = data_execucao.year
 
-    # mes_anterior = 2
-    # ano_anterior = 2026
+        # Corrige o caso de janeiro (volta pra dezembro do ano anterior)
+        if mes == 1:
+            mes_anterior = 12
+            ano_anterior = ano - 1
+        else:
+            mes_anterior = mes - 1
+            ano_anterior = ano
 
     # Garante o mês com dois dígitos (01, 02, ..., 12)
     pasta_mes_e_ano = f"{mes_anterior:02d}_{ano_anterior}"

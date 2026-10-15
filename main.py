@@ -23,6 +23,7 @@ from modules.api_custoUnitarioPorPonderacao import api_custoUnitarioPorPonderaca
 from modules.api_demonstracaoCustoUnitarioDosServicosAuxiliares import api_demonstracaoCustoUnitarioDosServicosAuxiliares
 from modules.api_benchmarkComposicaoDeCustos import api_benchmarkComposicaoDeCustos
 from modules.execution_tracker import ExecutionTracker
+from modules.api_extractor import configurar_paralelismo
 from modules.google_drive_upload import salvar_arquivos_no_drive
 from modules.ponto import consolidar_apos_extracao, processar_incremental
 from modules.resumo_incremental import ResumoIncremental
@@ -71,7 +72,33 @@ def filtrar_arquivos_para_upload(arquivos_gerados):
     return arquivos_filtrados
 
 
+def ler_argumentos():
+    """
+    --competencia MM_YYYY : pasta de destino (padrão: mês anterior a hoje)
+    --base MM_YYYY        : pasta usada como base da consolidação
+                            (padrão: mês anterior mais recente com arquivo de competências)
+    --paralelo N          : APIs extraídas ao mesmo tempo (padrão: 3; 1 = sequencial)
+    --apis A,B            : roda só essas APIs (ex: refazer as que falharam)
+    --reusar-competencias : usa o arquivo de competências já salvo na pasta (continuação)
+    """
+    import argparse
+    parser = argparse.ArgumentParser(description="Extração incremental KPIH")
+    parser.add_argument("--competencia", help="Pasta de destino no formato MM_YYYY")
+    parser.add_argument("--base", help="Pasta base no formato MM_YYYY")
+    parser.add_argument("--paralelo", type=int, default=3,
+                        help="Quantidade de APIs extraídas ao mesmo tempo (padrão: 3; use 1 para sequencial)")
+    parser.add_argument("--apis",
+                        help="Executa/consolida só estas APIs, separadas por vírgula "
+                             "(ex: FolhadePagamento,estatistica). Padrão: todas")
+    parser.add_argument("--reusar-competencias", action="store_true",
+                        help="Não consulta as competências na KPIH; usa o arquivo já salvo na pasta "
+                             "(para continuar uma execução interrompida)")
+    return parser.parse_args()
+
+
 def main():
+    args = ler_argumentos()
+
     print("\n" + "=" * 60)
     print("🚀 INICIANDO AUTOMAÇÃO DE EXTRAÇÃO DE DADOS")
     print("=" * 60 + "\n")
@@ -90,7 +117,7 @@ def main():
     #     sys.exit(1)
 
     try:
-        caminho = to_save()
+        caminho = to_save(args.competencia)
         print(f"📁 Diretório: {caminho}\n")
     except Exception as e:
         print(f"❌ Erro ao definir diretório: {e}")
@@ -109,7 +136,17 @@ def main():
     print("📅 PASSO 1: Extraindo competências")
     print("=" * 60)
 
-    diretorio_arquivo_competencia = api_competencia(caminho)
+    if args.reusar_competencias:
+        # Continuação de execução interrompida: usa a mesma lista de competências
+        # para que todas as APIs fiquem com o mesmo conjunto
+        diretorio_arquivo_competencia = os.path.join(caminho, "competencias_todas_unidades.xlsx")
+        if os.path.exists(diretorio_arquivo_competencia):
+            print(f"♻️ Reutilizando arquivo de competências existente: {diretorio_arquivo_competencia}")
+        else:
+            print(f"❌ --reusar-competencias: arquivo não encontrado em {caminho}")
+            diretorio_arquivo_competencia = None
+    else:
+        diretorio_arquivo_competencia = api_competencia(caminho)
 
     if not diretorio_arquivo_competencia:
         print("\n❌ Arquivo de competências não gerado")
@@ -148,14 +185,23 @@ def main():
         'api_custosindividualizadoporcentro.csv',
         'api_producoes.csv'
     ]
-    arquivos_apis_para_consolidar = []
 
-    arquivo_filtrado, resultados_inc, modo = processar_incremental(
+    # --apis limita só a EXTRAÇÃO; a consolidação sempre passa por todas
+    # (é idempotente: arquivo já consolidado não muda)
+    apis_selecionadas = None
+    if args.apis:
+        apis_selecionadas = {a.strip().lower() for a in args.apis.split(',') if a.strip()}
+
+    incremental = processar_incremental(
         caminho_atual=caminho,
         arquivo_competencia_atual=diretorio_arquivo_competencia,
         nomes_arquivos_apis=arquivos_apis_para_consolidar,
-        processar_somente_fechadas=True
+        processar_somente_fechadas=True,
+        caminho_base=args.base
     )
+    modo = incremental['modo']
+    arquivo_filtrado = incremental['arquivo_filtrado']
+    caminho_base = incremental['caminho_base']
 
     # Extrai lista legível de competências para o e-mail
     competencias_novas = []
@@ -186,7 +232,11 @@ def main():
         enviar_email_extracao(resumo_copia)
         sys.exit(0)
 
-    diretorio_arquivo_competencia = arquivo_filtrado
+    def arquivo_competencias_da_api(nome_api):
+        """APIs sem arquivo na base recebem todas as fechadas; as demais, só o filtrado"""
+        if f"api_{nome_api.lower()}.csv" in incremental['apis_sem_base']:
+            return incremental['arquivo_fechadas']
+        return arquivo_filtrado
 
     # =========================================================================
     # Inicializar resumo incremental (pasta da competência)
@@ -226,7 +276,7 @@ def main():
     resultados      = {}
     arquivos_gerados = []
 
-    for nome_api, funcao_api in apis_para_executar:
+    def executar_api(nome_api, funcao_api, diretorio_arquivo_competencia):
         inicio_api = datetime.now()   # ← marca início desta API
         arquivo    = None
         erro_str   = None
@@ -253,7 +303,9 @@ def main():
             sucesso   = False
             erro_str  = str(e)
 
-        # --- registrar resultado ---
+        return nome_api, sucesso, arquivo, erro_str, inicio_api, datetime.now()
+
+    def registrar_resultado(nome_api, sucesso, arquivo, erro_str, inicio_api, fim_api):
         resultados[nome_api] = {
             "sucesso": sucesso,
             "arquivo": arquivo,
@@ -271,17 +323,52 @@ def main():
             erro=erro_str,
             registros=0,            # se o seu tracker tiver contagem por API, passe aqui
             inicio=inicio_api,
-            fim=datetime.now(),
+            fim=fim_api,
         )
         # ───────────────────────────────────────────────────────────────────
+
+    if apis_selecionadas:
+        apis_para_executar = [a for a in apis_para_executar if a[0].lower() in apis_selecionadas]
+        print(f"\n🎯 Executando apenas: {', '.join(a[0] for a in apis_para_executar)}")
+
+    tarefas = []
+    for nome_api, funcao_api in apis_para_executar:
+        diretorio_arquivo_competencia = arquivo_competencias_da_api(nome_api)
+        if diretorio_arquivo_competencia is None:
+            print(f"\n⏭️ {nome_api}: nenhuma competência nova - será copiado da base na consolidação")
+            continue
+        tarefas.append((nome_api, funcao_api, diretorio_arquivo_competencia))
+
+    if args.paralelo > 1:
+        # APIs em paralelo; o extrator garante uma consulta por unidade de cada vez
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        print(f"\n⚡ Executando {args.paralelo} APIs em paralelo\n")
+        configurar_paralelismo(True)
+        with ThreadPoolExecutor(max_workers=args.paralelo) as executor:
+            futuros = [executor.submit(executar_api, *t) for t in tarefas]
+            for futuro in as_completed(futuros):
+                try:
+                    registrar_resultado(*futuro.result())
+                except Exception as e:
+                    # Não derruba as demais APIs em andamento
+                    print(f"⚠️ Falha ao registrar resultado de uma API: {e}")
+    else:
+        for tarefa in tarefas:
+            registrar_resultado(*executar_api(*tarefa))
 
     # =========================================================================
     # PASSO 4: CONSOLIDAR DADOS
     # =========================================================================
-    consolidar_apos_extracao(
+    resultados_consolidacao = consolidar_apos_extracao(
         caminho_atual=caminho,
-        nomes_arquivos_apis=arquivos_apis_para_consolidar
+        nomes_arquivos_apis=arquivos_apis_para_consolidar,
+        caminho_base=caminho_base
     )
+
+    # Arquivos copiados da base também entram no upload
+    for status, arquivo_final in resultados_consolidacao.values():
+        if arquivo_final and os.path.basename(arquivo_final) not in arquivos_gerados:
+            arquivos_gerados.append(os.path.basename(arquivo_final))
 
     # =========================================================================
     # PASSO 5: GERAR RELATÓRIO DO TRACKER

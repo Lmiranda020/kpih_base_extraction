@@ -2,9 +2,51 @@ import requests
 import pandas as pd
 from datetime import datetime
 import os
+import re
 import time
 import json
 import random
+import threading
+import zlib
+from collections import defaultdict
+from contextlib import contextmanager
+from modules.rede import aguardar_caminho, executar_com_retry, salvar_dataframe_seguro
+
+
+class _ControleUnidades:
+    """
+    Garante que, mesmo com APIs rodando em paralelo, cada unidade receba
+    no máximo UMA consulta por vez e que entre o fim de uma consulta e o
+    início da próxima na mesma unidade exista o intervalo configurado.
+    """
+
+    def __init__(self):
+        self._travas = defaultdict(threading.Lock)
+        self._ultimo_fim = {}
+        self._guarda = threading.Lock()
+
+    @contextmanager
+    def reservar(self, id_unidade, intervalo):
+        with self._guarda:
+            trava = self._travas[id_unidade]
+        with trava:
+            espera = self._ultimo_fim.get(id_unidade, 0) + intervalo - time.monotonic()
+            if espera > 0:
+                time.sleep(espera)
+            try:
+                yield
+            finally:
+                self._ultimo_fim[id_unidade] = time.monotonic()
+
+
+CONTROLE_UNIDADES = _ControleUnidades()
+_PARALELO_ATIVO = False
+
+
+def configurar_paralelismo(ativo):
+    """Quando ativo, cada API percorre as unidades começando de um ponto diferente"""
+    global _PARALELO_ATIVO
+    _PARALELO_ATIVO = bool(ativo)
 
 # def gerar_curl(url, headers, payload):
 #     """Gera comando cURL para debug"""
@@ -336,15 +378,15 @@ def extrair_dados_api(
     print(f"🚀 Iniciando extração: {nome_api}")
     print(f"{'='*60}\n")
     
-    # Validações iniciais
-    if not os.path.exists(diretorio_arquivo_competencia):
+    # Validações iniciais (aguarda a rede voltar se o Y: oscilar)
+    if not aguardar_caminho(diretorio_arquivo_competencia):
         print(f"❌ Arquivo não encontrado: {diretorio_arquivo_competencia}")
         return None
-    
-    if not os.path.exists(caminho_to_save):
+
+    if not aguardar_caminho(caminho_to_save):
         print(f"❌ Diretório de destino não existe: {caminho_to_save}")
         return None
-    
+
     url_base = os.getenv(env_var_url)
     if not url_base:
         print(f"❌ Variável de ambiente '{env_var_url}' não configurada!")
@@ -352,7 +394,10 @@ def extrair_dados_api(
 
     # Leitura do arquivo de competências
     try:
-        df_consolidado = pd.read_excel(diretorio_arquivo_competencia)
+        df_consolidado = executar_com_retry(
+            lambda: pd.read_excel(diretorio_arquivo_competencia),
+            os.path.basename(diretorio_arquivo_competencia)
+        )
     except Exception as e:
         print(f"❌ Erro ao ler arquivo de competências: {e}")
         return None
@@ -374,6 +419,19 @@ def extrair_dados_api(
     # Reordena para agrupar por unidade se solicitado
     if agrupar_por_unidade:
         df_consolidado = df_consolidado.sort_values(['unidade_id', 'competencia']).reset_index(drop=True)
+
+        # Em paralelo, cada API começa por uma unidade diferente para não
+        # ficarem todas esperando a mesma unidade ao mesmo tempo
+        if _PARALELO_ATIVO:
+            ids = list(dict.fromkeys(df_consolidado['unidade_id']))
+            inicio = zlib.crc32(nome_api.encode()) % len(ids)
+            ordem = {uid: i for i, uid in enumerate(ids[inicio:] + ids[:inicio])}
+            df_consolidado = (
+                df_consolidado.assign(_ordem=df_consolidado['unidade_id'].map(ordem))
+                .sort_values(['_ordem', 'competencia'], kind='stable')
+                .drop(columns='_ordem')
+                .reset_index(drop=True)
+            )
         print(f"📋 Processamento agrupado por unidade")
     
     print(f"📊 Total de competências a processar: {len(df_consolidado)}")
@@ -406,7 +464,7 @@ def extrair_dados_api(
         
         unidade_anterior = id_unidade
         
-        print(f"🔄 [{idx + 1}/{total}] {nome_unidade} - {competencia}")
+        print(f"🔄 [{nome_api} {idx + 1}/{total}] {nome_unidade} - {competencia}")
         
         # Monta payload específico da API
         try:
@@ -450,17 +508,18 @@ def extrair_dados_api(
         # print(f"{'='*60}\n")
 
         try:
-            # Usa função com retry
-            response, tempo_execucao, tentativa = fazer_requisicao_com_retry(
-                url=url,
-                headers=headers,
-                payload=payload,
-                timeout=timeout,
-                max_tentativas=max_tentativas_403,
-                backoff_inicial=backoff_inicial,
-                nome_unidade=nome_unidade,
-                competencia=competencia
-            )
+            # Usa função com retry (uma consulta por unidade de cada vez)
+            with CONTROLE_UNIDADES.reservar(id_unidade, delay_entre_chamadas):
+                response, tempo_execucao, tentativa = fazer_requisicao_com_retry(
+                    url=url,
+                    headers=headers,
+                    payload=payload,
+                    timeout=timeout,
+                    max_tentativas=max_tentativas_403,
+                    backoff_inicial=backoff_inicial,
+                    nome_unidade=nome_unidade,
+                    competencia=competencia
+                )
             
             if response.status_code == 200:
                 try:
@@ -718,19 +777,22 @@ def extrair_dados_api(
         
         print(f"{'='*60}\n")
         
-        # Calcula mês/ano anterior
-        data_execucao = datetime.today()
-        mes = data_execucao.month
-        ano = data_execucao.year
+        # Usa o nome da pasta de destino (ex: "09_2026") para nomear o arquivo,
+        # assim reprocessamentos de meses passados ficam com o sufixo correto
+        mes_e_ano = os.path.basename(os.path.normpath(caminho_to_save))
+        if not re.fullmatch(r"\d{2}_\d{4}", mes_e_ano):
+            data_execucao = datetime.today()
+            mes = data_execucao.month
+            ano = data_execucao.year
 
-        if mes == 1:
-            mes_anterior = 12
-            ano_anterior = ano - 1
-        else:
-            mes_anterior = mes - 1
-            ano_anterior = ano
+            if mes == 1:
+                mes_anterior = 12
+                ano_anterior = ano - 1
+            else:
+                mes_anterior = mes - 1
+                ano_anterior = ano
 
-        mes_e_ano = f"{mes_anterior:02d}_{ano_anterior}"
+            mes_e_ano = f"{mes_anterior:02d}_{ano_anterior}"
 
         # converte a coluna de comptencia para deixar no formato 01/2025
         if 'competencia' in df_final.columns:
@@ -763,8 +825,8 @@ def extrair_dados_api(
                 lambda x: x.encode('utf-8', errors='ignore').decode('utf-8') if isinstance(x, str) else x
             )
 
-        # Salva o arquivo
-        df_final.to_csv(caminho_arquivo, index=False, sep=';', encoding='utf-8-sig')
+        # Salva o arquivo (local primeiro, depois copia para a rede com retry)
+        salvar_dataframe_seguro(df_final, caminho_arquivo, index=False, sep=';', encoding='utf-8-sig')
         
         print(f"\n{'='*60}")
         print(f"✅ {nome_api} extraído com sucesso!")

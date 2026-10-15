@@ -10,6 +10,7 @@ Arquivo gerado: resumo_execucao.csv (na pasta da competência)
 import os
 import csv
 from datetime import datetime
+from modules.rede import executar_com_retry
 
 
 CAMPOS_CSV = [
@@ -82,9 +83,17 @@ class ResumoIncremental:
             'duracao_segundos':  duracao,
         }
 
-        with open(self.caminho, 'a', newline='', encoding='utf-8-sig') as f:
-            writer = csv.DictWriter(f, fieldnames=CAMPOS_CSV, delimiter=';')
-            writer.writerow(linha)
+        def _gravar():
+            with open(self.caminho, 'a', newline='', encoding='utf-8-sig') as f:
+                writer = csv.DictWriter(f, fieldnames=CAMPOS_CSV, delimiter=';')
+                writer.writerow(linha)
+
+        # O resumo é informativo: falha de rede aqui não pode derrubar a execução
+        try:
+            executar_com_retry(_gravar, os.path.basename(self.caminho))
+        except OSError as e:
+            print(f"   ⚠️ [{api}] não foi possível gravar o resumo ({e})")
+            return
 
         status = "✅" if sucesso else "❌"
         print(f"   {status} [{api}] resumo salvo → {os.path.basename(self.caminho)}")
