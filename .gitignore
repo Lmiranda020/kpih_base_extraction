@@ -1,0 +1,10 @@
+.env
+/data
+credenciais.json
+credenciais
+/dist
+utils_path.py
+iniciar_automacao_kpi.bat
+Documentação Técnica.docx
+__pycache__/
+*.pyc
