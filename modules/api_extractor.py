@@ -8,7 +8,7 @@ import json
 import random
 import threading
 import zlib
-from collections import defaultdict
+from collections import defaultdict, deque
 from contextlib import contextmanager
 from modules.rede import aguardar_caminho, executar_com_retry, salvar_dataframe_seguro
 
@@ -23,6 +23,7 @@ class _ControleUnidades:
     def __init__(self):
         self._travas = defaultdict(threading.Lock)
         self._ultimo_fim = {}
+        self._donos = {}
         self._guarda = threading.Lock()
 
     @contextmanager
@@ -38,6 +39,18 @@ class _ControleUnidades:
             finally:
                 self._ultimo_fim[id_unidade] = time.monotonic()
 
+    def ocupar(self, id_unidade, nome_api):
+        """Reserva a unidade inteira para uma API; False se outra API já está nela"""
+        with self._guarda:
+            if id_unidade in self._donos:
+                return False
+            self._donos[id_unidade] = nome_api
+            return True
+
+    def liberar(self, id_unidade):
+        with self._guarda:
+            self._donos.pop(id_unidade, None)
+
 
 CONTROLE_UNIDADES = _ControleUnidades()
 _PARALELO_ATIVO = False
@@ -47,6 +60,31 @@ def configurar_paralelismo(ativo):
     """Quando ativo, cada API percorre as unidades começando de um ponto diferente"""
     global _PARALELO_ATIVO
     _PARALELO_ATIVO = bool(ativo)
+
+
+def _iterar_unidades_livres(df, nome_api):
+    """
+    Percorre as linhas agrupadas por unidade. Em paralelo, se a unidade estiver
+    sendo consultada por outra API, passa para a próxima livre e volta depois,
+    evitando que as APIs fiquem enfileiradas na mesma unidade.
+    """
+    grupos = deque((uid, g) for uid, g in df.groupby('unidade_id', sort=False))
+    while grupos:
+        for _ in range(len(grupos)):
+            uid, grupo = grupos[0]
+            if CONTROLE_UNIDADES.ocupar(uid, nome_api):
+                break
+            grupos.rotate(-1)
+        else:
+            time.sleep(1)  # todas as unidades restantes estão ocupadas
+            continue
+
+        grupos.popleft()
+        try:
+            for idx, linha in grupo.iterrows():
+                yield idx, linha
+        finally:
+            CONTROLE_UNIDADES.liberar(uid)
 
 # def gerar_curl(url, headers, payload):
 #     """Gera comando cURL para debug"""
@@ -451,7 +489,12 @@ def extrair_dados_api(
     unidade_anterior = None
 
     # Loop pelas unidades
-    for idx, unidade in df_consolidado.iterrows():
+    if _PARALELO_ATIVO and agrupar_por_unidade:
+        iterador = _iterar_unidades_livres(df_consolidado, nome_api)
+    else:
+        iterador = df_consolidado.iterrows()
+
+    for idx, (_, unidade) in enumerate(iterador):
         id_unidade = unidade['unidade_id']
         token = unidade['token']
         nome_unidade = unidade['nome']
